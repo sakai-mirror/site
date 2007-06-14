@@ -4,21 +4,20 @@
  ***********************************************************************************
  *
  * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
- * 
- * Licensed under the Educational Community License, Version 1.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
+ *
+ * Licensed under the Educational Community License, Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.opensource.org/licenses/ecl1.php
- * 
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
  * limitations under the License.
  *
  **********************************************************************************/
-
 package org.sakaiproject.site.impl;
 
 import java.sql.Connection;
@@ -43,6 +42,7 @@ import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
+import org.sakaiproject.site.api.SiteServiceSql;
 import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.util.BaseDbFlatStorage;
@@ -94,7 +94,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 	/**
 	 * Configuration: set the external locks value.
-	 * 
+	 *
 	 * @param value
 	 *        The external locks value.
 	 */
@@ -108,7 +108,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 	/**
 	 * Configuration: to run the ddl on init or not.
-	 * 
+	 *
 	 * @param value
 	 *        the auto ddl value.
 	 */
@@ -116,6 +116,24 @@ public abstract class DbSiteService extends BaseSiteService
 	{
 		m_autoDdl = new Boolean(value).booleanValue();
 	}
+
+   protected Map<String, SiteServiceSql> databaseBeans;       // contains a map of the database dependent beans injected by spring
+   protected SiteServiceSql              siteServiceSql;      // contains database dependent code
+
+   public void setDatabaseBeans(Map databaseBeans) {
+     this.databaseBeans = databaseBeans;
+   }
+
+   public SiteServiceSql getSiteServiceSql() {
+      return siteServiceSql;
+   }
+
+   /**
+    * sets which bean containing database dependent code should be used depending on the database vendor.
+    */
+   public void setSiteServiceSql(String vendor) {
+      this.siteServiceSql = (databaseBeans.containsKey(vendor) ? databaseBeans.get(vendor) : databaseBeans.get("default"));
+   }
 
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Init and Destroy
@@ -138,12 +156,13 @@ public abstract class DbSiteService extends BaseSiteService
 
 				// also load the 2.1.0.003 field insertion
 				sqlService().ddl(this.getClass().getClassLoader(), "sakai_site_2_1_0_003");
-			
+
 				// also load the 2.4.0 field insertion
 				sqlService().ddl(this.getClass().getClassLoader(), "sakai_site_2_4_0_001");
 			}
 
 			super.init();
+         setSiteServiceSql(sqlService().getVendor());
 
 			M_log.info("init(): site table: " + m_siteTableName + " external locks: " + m_useExternalLocks);
 		}
@@ -159,7 +178,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 	/**
 	 * Construct a Storage object.
-	 * 
+	 *
 	 * @return The new storage object.
 	 */
 	protected Storage newStorage()
@@ -181,7 +200,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Construct.
-		 * 
+		 *
 		 * @param user
 		 *        The StorageUser class to call back for creation of Resource and Edit objects.
 		 */
@@ -231,14 +250,14 @@ public abstract class DbSiteService extends BaseSiteService
 			{
 				public void run()
 				{
-					saveTx(edit);					
+					saveTx(edit);
 				}
 			}, "site:" + edit.getId());
 		}
 
 		/**
 		 * The transaction code to save a site.
-		 * 
+		 *
 		 * @param edit
 		 *        The site to save.
 		 */
@@ -253,22 +272,22 @@ public abstract class DbSiteService extends BaseSiteService
 			Object fields[] = new Object[1];
 			fields[0] = caseId(edit.getId());
 
-			String statement = "delete from SAKAI_SITE_TOOL_PROPERTY where SITE_ID = ?";
+         String statement = siteServiceSql.getDeleteToolPropertiesSql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_TOOL where SITE_ID = ?";
+         statement = siteServiceSql.getDeleteToolsSql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_PAGE_PROPERTY where SITE_ID = ?";
+         statement = siteServiceSql.getDeletePagePropertiesSql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_PAGE where SITE_ID = ?";
+         statement = siteServiceSql.getDeletePagesSql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_GROUP_PROPERTY where SITE_ID = ?";
+         statement = siteServiceSql.getDeleteGroupPropertiesSql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_GROUP where SITE_ID = ?";
+         statement = siteServiceSql.getDeleteGroupsSql();
 			m_sql.dbWrite(statement, fields);
 
 			// since we've already deleted the old values, don't delete them again.
@@ -281,7 +300,7 @@ public abstract class DbSiteService extends BaseSiteService
 				SitePage page = (SitePage) iPages.next();
 
 				// write the page
-				statement = "insert into SAKAI_SITE_PAGE (PAGE_ID, SITE_ID, TITLE, LAYOUT, POPUP, SITE_ORDER)" + " values (?,?,?,?,?,?)";
+            statement = siteServiceSql.getInsertPageSql();
 
 				fields = new Object[6];
 				fields[0] = page.getId();
@@ -293,8 +312,7 @@ public abstract class DbSiteService extends BaseSiteService
 				m_sql.dbWrite(statement, fields);
 
 				// write the page's properties
-				writeProperties("SAKAI_SITE_PAGE_PROPERTY", "PAGE_ID", page.getId(), "SITE_ID", caseId(edit.getId()), page.getProperties(),
-						deleteAgain);
+            writeProperties("SAKAI_SITE_PAGE_PROPERTY", "PAGE_ID", page.getId(), "SITE_ID", caseId(edit.getId()), page.getProperties(), deleteAgain);
 
 				// write the tools
 				int toolOrder = 1;
@@ -303,8 +321,7 @@ public abstract class DbSiteService extends BaseSiteService
 					ToolConfiguration tool = (ToolConfiguration) iTools.next();
 
 					// write the tool
-					statement = "insert into SAKAI_SITE_TOOL (TOOL_ID, PAGE_ID, SITE_ID, REGISTRATION, PAGE_ORDER, TITLE, LAYOUT_HINTS)"
-							+ " values (?,?,?,?,?,?,?)";
+               statement = siteServiceSql.getInsertToolSql();
 
 					fields = new Object[7];
 					fields[0] = tool.getId();
@@ -328,7 +345,7 @@ public abstract class DbSiteService extends BaseSiteService
 				Group group = (Group) iGroups.next();
 
 				// write the group
-				statement = "insert into SAKAI_SITE_GROUP (GROUP_ID, SITE_ID, TITLE, DESCRIPTION)" + " values (?,?,?,?)";
+            statement = siteServiceSql.getInsertGroupSql();
 
 				fields = new Object[4];
 				fields[0] = group.getId();
@@ -338,8 +355,7 @@ public abstract class DbSiteService extends BaseSiteService
 				m_sql.dbWrite(statement, fields);
 
 				// write the group's properties
-				writeProperties("SAKAI_SITE_GROUP_PROPERTY", "GROUP_ID", group.getId(), "SITE_ID", caseId(edit.getId()), group
-						.getProperties(), deleteAgain);
+            writeProperties("SAKAI_SITE_GROUP_PROPERTY", "GROUP_ID", group.getId(), "SITE_ID", caseId(edit.getId()), group.getProperties(), deleteAgain);
 			}
 
 			// write the site and properties, releasing the lock
@@ -351,7 +367,7 @@ public abstract class DbSiteService extends BaseSiteService
 		 */
 		public void saveInfo(String siteId, String description, String infoUrl)
 		{
-			String statement = "update " + m_siteTableName + " set DESCRIPTION = ?, INFO_URL = ? where SITE_ID = ?";
+         String statement = siteServiceSql.getUpdateSiteSql(m_siteTableName);
 
 			Object fields[] = new Object[3];
 			fields[0] = description;
@@ -371,7 +387,7 @@ public abstract class DbSiteService extends BaseSiteService
 			{
 				public void run()
 				{
-					saveToolConfigTx(tool);					
+					saveToolConfigTx(tool);
 				}
 			}, "siteToolConfig:" + tool.getId());
 		}
@@ -386,15 +402,14 @@ public abstract class DbSiteService extends BaseSiteService
 			fields[0] = caseId(tool.getSiteId());
 			fields[1] = caseId(tool.getId());
 
-			String statement = "delete from SAKAI_SITE_TOOL_PROPERTY where SITE_ID = ? and TOOL_ID = ?";
+         String statement = siteServiceSql.getDeleteToolPropertySql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_TOOL where SITE_ID = ? and TOOL_ID = ?";
+         statement = siteServiceSql.getDeleteToolSql();
 			m_sql.dbWrite(statement, fields);
 
 			// write the tool
-			statement = "insert into SAKAI_SITE_TOOL (TOOL_ID, PAGE_ID, SITE_ID, REGISTRATION, PAGE_ORDER, TITLE, LAYOUT_HINTS)"
-					+ " values (?,?,?,?,?,?,?)";
+         statement = siteServiceSql.getInsertToolSql();
 
 			fields = new Object[7];
 			fields[0] = tool.getId();
@@ -407,8 +422,7 @@ public abstract class DbSiteService extends BaseSiteService
 			m_sql.dbWrite(statement, fields);
 
 			// write the tool's properties
-			writeProperties("SAKAI_SITE_TOOL_PROPERTY", "TOOL_ID", tool.getId(), "SITE_ID",
-					caseId(tool.getSiteId()), tool.getPlacementConfig());
+         writeProperties("SAKAI_SITE_TOOL_PROPERTY", "TOOL_ID", tool.getId(), "SITE_ID", caseId(tool.getSiteId()), tool.getPlacementConfig());
 		}
 
 		/**
@@ -421,9 +435,9 @@ public abstract class DbSiteService extends BaseSiteService
 			{
 				public void run()
 				{
-					removeTx(edit);					
+					removeTx(edit);
 				}
-			}, "siteRemove:" + edit.getId());		
+			}, "siteRemove:" + edit.getId());
 		}
 
 		/**
@@ -438,25 +452,25 @@ public abstract class DbSiteService extends BaseSiteService
 			Object fields[] = new Object[1];
 			fields[0] = caseId(edit.getId());
 
-			String statement = "delete from SAKAI_SITE_TOOL_PROPERTY where SITE_ID = ?";
+         String statement = siteServiceSql.getDeleteToolPropertiesSql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_TOOL where SITE_ID = ?";
+         statement = siteServiceSql.getDeleteToolsSql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_PAGE_PROPERTY where SITE_ID = ?";
+         statement = siteServiceSql.getDeletePagePropertiesSql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_PAGE where SITE_ID = ?";
+         statement = siteServiceSql.getDeletePagesSql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_USER where SITE_ID = ?";
+         statement = siteServiceSql.getDeleteUsersSql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_GROUP_PROPERTY where SITE_ID = ?";
+         statement = siteServiceSql.getDeleteGroupPropertiesSql();
 			m_sql.dbWrite(statement, fields);
 
-			statement = "delete from SAKAI_SITE_GROUP where SITE_ID = ?";
+         statement = siteServiceSql.getDeleteGroupsSql();
 			m_sql.dbWrite(statement, fields);
 
 			// delete the site and properties
@@ -482,22 +496,22 @@ public abstract class DbSiteService extends BaseSiteService
 			if ((type == SelectionType.ACCESS) || (type == SelectionType.UPDATE))
 			{
 				// join on site id and also select the proper user
-				where.append("SAKAI_SITE.SITE_ID = SAKAI_SITE_USER.SITE_ID and SAKAI_SITE_USER.USER_ID = ? and ");
+            where.append(siteServiceSql.getSitesWhere1Sql());
 			}
 
 			// ignore user sites
-			if (type.isIgnoreUser()) where.append("SAKAI_SITE.IS_USER = '0' and ");
+         if (type.isIgnoreUser()) where.append(siteServiceSql.getSitesWhere2Sql());
 			// reject special sites
-			if (type.isIgnoreSpecial()) where.append("SAKAI_SITE.IS_SPECIAL = '0' and ");
+         if (type.isIgnoreSpecial()) where.append(siteServiceSql.getSitesWhere3Sql());
 			// reject unpublished sites
-			if (type.isIgnoreUnpublished()) where.append("SAKAI_SITE.PUBLISHED = 1 and ");
+         if (type.isIgnoreUnpublished()) where.append(siteServiceSql.getSitesWhere4Sql());
 
 			if (ofType != null)
 			{
 				if (ofType.getClass().equals(String.class))
 				{
 					// type criteria is a simple String value
-					where.append("SAKAI_SITE.TYPE = ? and ");
+               where.append(siteServiceSql.getSitesWhere5Sql());
 				}
 				else if (ofType instanceof String[] || ofType instanceof List || ofType instanceof Set)
 				{
@@ -517,7 +531,7 @@ public abstract class DbSiteService extends BaseSiteService
 					}
 					if (size > 0)
 					{
-						where.append("SAKAI_SITE.TYPE IN (?");
+                  where.append(siteServiceSql.getSitesWhere6Sql());
 						for (int i = 1; i < size; i++)
 						{
 							where.append(",?");
@@ -528,128 +542,127 @@ public abstract class DbSiteService extends BaseSiteService
 			}
 
 			// reject non-joinable sites
-			if (type == SelectionType.JOINABLE) where.append("SAKAI_SITE.JOINABLE = '1' and ");
+         if (type == SelectionType.JOINABLE) where.append(siteServiceSql.getSitesWhere7Sql());
 			// check for pub view status
-			if (type == SelectionType.PUBVIEW) where.append("SAKAI_SITE.PUBVIEW = '1' and ");
+         if (type == SelectionType.PUBVIEW) where.append(siteServiceSql.getSitesWhere8Sql());
 			// check criteria
-			if (criteria != null) where.append("UPPER(SAKAI_SITE.TITLE) like UPPER(?) and ");
+         if (criteria != null) where.append(siteServiceSql.getSitesWhere9Sql());
 			// update permission
-			if (type == SelectionType.UPDATE) where.append("SAKAI_SITE_USER.PERMISSION <= -1 and ");
+         if (type == SelectionType.UPDATE) where.append(siteServiceSql.getSitesWhere10Sql());
 			// access permission
-			if (type == SelectionType.ACCESS) where.append("SAKAI_SITE_USER.PERMISSION <= SAKAI_SITE.PUBLISHED and ");
+         if (type == SelectionType.ACCESS) where.append(siteServiceSql.getSitesWhere11Sql());
 			// joinable requires NOT access permission
 			if (type == SelectionType.JOINABLE)
-				where
-						.append("SITE_ID not in (select SITE_ID from SAKAI_SITE_USER where USER_ID = ? and PERMISSION <= PUBLISHED) and ");
+            where.append(siteServiceSql.getSitesWhere12Sql());
+
 
 			// do we need a join?
 			String join = null;
 			if ((type == SelectionType.ACCESS) || (type == SelectionType.UPDATE))
 			{
 				// join with the SITE_USER table
-				join = "SAKAI_SITE_USER";
+            join = siteServiceSql.getSitesJoin1Sql();
 			}
 			if (sort==SortType.CREATED_BY_ASC || sort==SortType.CREATED_BY_DESC || sort==SortType.MODIFIED_BY_ASC || sort==SortType.MODIFIED_BY_DESC)
 			{
 				// join with SITE_USER_ID_MAP table
 				if (join != null)
 				{
-					join += ", SAKAI_USER_ID_MAP";
+               join += siteServiceSql.getSitesJoin2Sql();
 				}
 				else
 				{
-					join = "SAKAI_USER_ID_MAP";
+               join = siteServiceSql.getSitesJoin3Sql();
 				}
 			}
-				
+
 
 			// add propertyCriteria if specified
 			if ((propertyCriteria != null) && (propertyCriteria.size() > 0))
 			{
 				for (int i = 0; i < propertyCriteria.size(); i++)
 				{
-					where
-							.append("SAKAI_SITE.SITE_ID in (select SITE_ID from SAKAI_SITE_PROPERTY where NAME = ? and UPPER(VALUE) like UPPER(?)) and ");
+               where.append(siteServiceSql.getSitesWhere13Sql());
 				}
 			}
-			
+
 			// where sorted by createdby, need to join with SAKAI_USER_ID_MAP in order to find out the user eid
 			if (sort==SortType.CREATED_BY_ASC || sort==SortType.CREATED_BY_DESC )
 			{
 				// add more to where clause
-				where.append("SAKAI_SITE.CREATEDBY = SAKAI_USER_ID_MAP.USER_ID and ");
+            where.append(siteServiceSql.getSitesWhere14Sql());
 			}
 			else if (sort==SortType.MODIFIED_BY_ASC || sort==SortType.MODIFIED_BY_DESC)
 			{
 				// sort by modifiedby
-				where.append("SAKAI_SITE.MODIFIEDBY = SAKAI_USER_ID_MAP.USER_ID and ");
+            where.append(siteServiceSql.getSitesWhere15Sql());
 			}
-			
+
 			// add order by if needed
 			String order = null;
 			if (sort == SortType.ID_ASC)
 			{
-				order = "SAKAI_SITE.SITE_ID ASC";
+            order = siteServiceSql.getSitesOrder1Sql();
 			}
 			else if (sort == SortType.ID_DESC)
 			{
-				order = "SAKAI_SITE.SITE_ID DESC";
+            order = siteServiceSql.getSitesOrder2Sql();
 			}
 			else if (sort == SortType.TITLE_ASC)
 			{
-				order = "SAKAI_SITE.TITLE ASC";
+            order = siteServiceSql.getSitesOrder3Sql();
 			}
 			else if (sort == SortType.TITLE_DESC)
 			{
-				order = "SAKAI_SITE.TITLE DESC";
+            order = siteServiceSql.getSitesOrder4Sql();
 			}
 			else if (sort == SortType.TYPE_ASC)
 			{
-				order = "SAKAI_SITE.TYPE ASC";
+            order = siteServiceSql.getSitesOrder5Sql();
 			}
 			else if (sort == SortType.TYPE_DESC)
 			{
-				order = "SAKAI_SITE.TYPE DESC";
+            order = siteServiceSql.getSitesOrder6Sql();
 			}
 			else if (sort == SortType.PUBLISHED_ASC)
 			{
-				order = "SAKAI_SITE.PUBLISHED ASC";
+            order = siteServiceSql.getSitesOrder7Sql();
 			}
 			else if (sort == SortType.PUBLISHED_DESC)
 			{
-				order = "SAKAI_SITE.PUBLISHED DESC";
+            order = siteServiceSql.getSitesOrder8Sql();
 			}
 			else if (sort == SortType.CREATED_BY_ASC)
 			{
-				order = "SAKAI_USER_ID_MAP.EID ASC";
+            order = siteServiceSql.getSitesOrder9Sql();
 			}
 			else if (sort == SortType.CREATED_BY_DESC)
 			{
-				order = "SAKAI_USER_ID_MAP.EID DESC";
+            order = siteServiceSql.getSitesOrder10Sql();
 			}
 			else if (sort == SortType.MODIFIED_BY_ASC)
 			{
-				order = "SAKAI_USER_ID_MAP.EID ASC";
+            order = siteServiceSql.getSitesOrder11Sql();
 			}
 			else if (sort == SortType.MODIFIED_BY_DESC)
 			{
-				order = "SAKAI_USER_ID_MAP.EID DESC";
+            order = siteServiceSql.getSitesOrder12Sql();
 			}
 			else if (sort == SortType.CREATED_ON_ASC)
 			{
-				order = "SAKAI_SITE.CREATEDON ASC";
+            order = siteServiceSql.getSitesOrder13Sql();
 			}
 			else if (sort == SortType.CREATED_ON_DESC)
 			{
-				order = "SAKAI_SITE.CREATEDON DESC";
+            order = siteServiceSql.getSitesOrder14Sql();
 			}
 			else if (sort == SortType.MODIFIED_ON_ASC)
 			{
-				order = "SAKAI_SITE.MODIFIEDON ASC";
+            order = siteServiceSql.getSitesOrder15Sql();
 			}
 			else if (sort == SortType.MODIFIED_ON_DESC)
 			{
-				order = "SAKAI_SITE.MODIFIEDON DESC";
+            order = siteServiceSql.getSitesOrder16Sql();
 			}
 
 			int fieldCount = 0;
@@ -768,7 +781,7 @@ public abstract class DbSiteService extends BaseSiteService
 		 */
 		public List getSiteTypes()
 		{
-			String statement = "select distinct TYPE from SAKAI_SITE order by TYPE";
+         String statement = siteServiceSql.getTypesSql();
 
 			List rv = sqlService().dbRead(statement);
 
@@ -783,7 +796,7 @@ public abstract class DbSiteService extends BaseSiteService
 			if (siteId == null) return m_service.adjustSkin(null, true);
 
 			// let the db do the work
-			String statement = "select SKIN, PUBLISHED from SAKAI_SITE where SITE_ID = ?";
+         String statement = siteServiceSql.getSkinSql();
 			Object fields[] = new Object[1];
 			fields[0] = caseId(siteId);
 
@@ -827,15 +840,15 @@ public abstract class DbSiteService extends BaseSiteService
 			if ((type == SelectionType.ACCESS) || (type == SelectionType.UPDATE))
 			{
 				// join on site id and also select the proper user
-				where.append("SAKAI_SITE.SITE_ID = SAKAI_SITE_USER.SITE_ID and SAKAI_SITE_USER.USER_ID = ? and ");
+            where.append(siteServiceSql.getSitesWhere1Sql());
 			}
 
 			// ignore user sites
-			if (type.isIgnoreUser()) where.append("SAKAI_SITE.IS_USER = '0' and ");
+         if (type.isIgnoreUser()) where.append(siteServiceSql.getSitesWhere2Sql());
 			// reject special sites
-			if (type.isIgnoreSpecial()) where.append("SAKAI_SITE.IS_SPECIAL = '0' and ");
+         if (type.isIgnoreSpecial()) where.append(siteServiceSql.getSitesWhere3Sql());
 			// reject unpublished sites
-			if (type.isIgnoreUnpublished()) where.append("SAKAI_SITE.PUBLISHED = 1 and ");
+         if (type.isIgnoreUnpublished()) where.append(siteServiceSql.getSitesWhere4Sql());
 
 			// reject unwanted site types
 			if (ofType != null)
@@ -843,7 +856,7 @@ public abstract class DbSiteService extends BaseSiteService
 				if (ofType instanceof String)
 				{
 					// type criteria is a simple String value
-					where.append("SAKAI_SITE.TYPE = ? and ");
+               where.append(siteServiceSql.getSitesWhere5Sql());
 				}
 				else if (ofType instanceof String[] || ofType instanceof List || ofType instanceof Set)
 				{
@@ -863,7 +876,7 @@ public abstract class DbSiteService extends BaseSiteService
 					}
 					if (size > 0)
 					{
-						where.append("SAKAI_SITE.TYPE IN (?");
+                  where.append(siteServiceSql.getSitesWhere6Sql());
 						for (int i = 1; i < size; i++)
 						{
 							where.append(",?");
@@ -874,26 +887,25 @@ public abstract class DbSiteService extends BaseSiteService
 			}
 
 			// reject non-joinable sites
-			if (type == SelectionType.JOINABLE) where.append("SAKAI_SITE.JOINABLE = '1' and ");
+         if (type == SelectionType.JOINABLE) where.append(siteServiceSql.getSitesWhere7Sql());
 			// check for pub view status
-			if (type == SelectionType.PUBVIEW) where.append("SAKAI_SITE.PUBVIEW = '1' and ");
+         if (type == SelectionType.PUBVIEW) where.append(siteServiceSql.getSitesWhere8Sql());
 			// check criteria
-			if (criteria != null) where.append("UPPER(SAKAI_SITE.TITLE) like UPPER(?) and ");
+         if (criteria != null) where.append(siteServiceSql.getSitesWhere9Sql());
 			// update permission
-			if (type == SelectionType.UPDATE) where.append("SAKAI_SITE_USER.PERMISSION <= -1 and ");
+         if (type == SelectionType.UPDATE) where.append(siteServiceSql.getSitesWhere10Sql());
 			// access permission
-			if (type == SelectionType.ACCESS) where.append("SAKAI_SITE_USER.PERMISSION <= SAKAI_SITE.PUBLISHED and ");
+         if (type == SelectionType.ACCESS) where.append(siteServiceSql.getSitesWhere11Sql());
 			// joinable requires NOT access permission
 			if (type == SelectionType.JOINABLE)
-				where
-						.append("SAKAI_SITE.SITE_ID not in (select SITE_ID from SAKAI_SITE_USER where USER_ID = ? and PERMISSION <= PUBLISHED) and ");
+            where.append(siteServiceSql.getSitesWhere12Sql());
 
 			// do we need a join?
 			String join = null;
 			if ((type == SelectionType.ACCESS) || (type == SelectionType.UPDATE))
 			{
 				// join with the SITE_USER table
-				join = "SAKAI_SITE_USER";
+            join = siteServiceSql.getSitesJoin1Sql();
 			}
 
 			// add propertyCriteria if specified
@@ -901,8 +913,7 @@ public abstract class DbSiteService extends BaseSiteService
 			{
 				for (int i = 0; i < propertyCriteria.size(); i++)
 				{
-					where
-							.append("SAKAI_SITE.SITE_ID in (select SITE_ID from SAKAI_SITE_PROPERTY where NAME = ? and UPPER(VALUE) like UPPER(?)) and ");
+               where.append(siteServiceSql.getSitesWhere13Sql());
 				}
 			}
 
@@ -1007,15 +1018,14 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Access the ToolConfiguration that has this id, if one is defined, else return null. The tool may be on any SitePage in the site.
-		 * 
+		 *
 		 * @param id
 		 *        The id of the tool.
 		 * @return The ToolConfiguration that has this id, if one is defined, else return null.
 		 */
 		public ToolConfiguration findTool(final String id)
 		{
-			String sql = "select REGISTRATION, SAKAI_SITE_TOOL.TITLE, LAYOUT_HINTS, SAKAI_SITE_TOOL.SITE_ID, PAGE_ID, SKIN, PUBLISHED, PAGE_ORDER from SAKAI_SITE_TOOL, SAKAI_SITE"
-					+ " where SAKAI_SITE_TOOL.SITE_ID = SAKAI_SITE.SITE_ID" + " and TOOL_ID = ?";
+         String sql = siteServiceSql.getToolFields1Sql();
 
 			Object fields[] = new Object[1];
 			fields[0] = id;
@@ -1072,8 +1082,7 @@ public abstract class DbSiteService extends BaseSiteService
 		 */
 		public SitePage findPage(final String id)
 		{
-			String sql = "select PAGE_ID, SAKAI_SITE_PAGE.TITLE, LAYOUT, SAKAI_SITE_PAGE.SITE_ID, SKIN, PUBLISHED, POPUP "
-					+ "from SAKAI_SITE_PAGE, SAKAI_SITE where SAKAI_SITE_PAGE.SITE_ID = SAKAI_SITE.SITE_ID " + "and PAGE_ID = ?";
+         String sql = siteServiceSql.getPageFields1Sql();
 
 			Object fields[] = new Object[1];
 			fields[0] = id;
@@ -1125,14 +1134,14 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Access the Site id for the page with this id.
-		 * 
+		 *
 		 * @param id
 		 *        The id of the page.
 		 * @return The Site id for the page with this id, if the page is found, else null.
 		 */
 		public String findPageSiteId(String id)
 		{
-			String sql = "select SITE_ID from SAKAI_SITE_PAGE where PAGE_ID = ?";
+         String sql =  siteServiceSql.getSiteId1Sql();
 			Object fields[] = new Object[1];
 			fields[0] = id;
 
@@ -1157,7 +1166,7 @@ public abstract class DbSiteService extends BaseSiteService
 		 */
 		public String findGroupSiteId(String id)
 		{
-			String sql = "select SS.SITE_ID from SAKAI_SITE_GROUP SS where SS.GROUP_ID = ?";
+         String sql =  siteServiceSql.getSiteId2Sql();
 			Object fields[] = new Object[1];
 			fields[0] = id;
 
@@ -1179,14 +1188,14 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Access the Site id for the tool with this id.
-		 * 
+		 *
 		 * @param id
 		 *        The id of the tool.
 		 * @return The Site id for the tool with this id, if the tool is found, else null.
 		 */
 		public String findToolSiteId(String id)
 		{
-			String sql = "select SITE_ID from SAKAI_SITE_TOOL where TOOL_ID = ?";
+         String sql =  siteServiceSql.getSiteId3Sql();
 			Object fields[] = new Object[1];
 			fields[0] = id;
 
@@ -1208,7 +1217,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Establish the internal security for this site. Previous security settings are replaced for this site. Assigning a user with update implies the two reads; assigning a user with unp read implies the other read.
-		 * 
+		 *
 		 * @param siteId
 		 *        The id of the site.
 		 * @param updateUsers
@@ -1236,7 +1245,7 @@ public abstract class DbSiteService extends BaseSiteService
 			Set targetUpdate = updateUsers;
 
 			// read existing
-			String statement = "select USER_ID, PERMISSION from SAKAI_SITE_USER " + "where SITE_ID = ?";
+         String statement =  siteServiceSql.getUserIdSql();
 			Object[] fields = new Object[1];
 			fields[0] = caseId(siteId);
 
@@ -1267,8 +1276,7 @@ public abstract class DbSiteService extends BaseSiteService
 						}
 						else
 						{
-							M_log.warn("setSiteSecurity: invalid permission " + permission + " site: " + siteId + " user: "
-									+ userId);
+                     M_log.warn("setSiteSecurity: invalid permission " + permission + " site: " + siteId + " user: " + userId);
 						}
 					}
 					catch (Throwable ignore)
@@ -1342,7 +1350,7 @@ public abstract class DbSiteService extends BaseSiteService
 				fields[0] = caseId(siteId);
 
 				// delete
-				statement = "delete from SAKAI_SITE_USER where SITE_ID = ? and USER_ID = ?";
+            statement =  siteServiceSql.getDeleteUserSql();
 				for (Iterator i = updDeletes.iterator(); i.hasNext();)
 				{
 					String userId = (String) i.next();
@@ -1363,7 +1371,7 @@ public abstract class DbSiteService extends BaseSiteService
 				}
 
 				// insert
-				statement = "insert into SAKAI_SITE_USER (SITE_ID, USER_ID, PERMISSION) values (?, ?, ?)";
+            statement =  siteServiceSql.getInsertUserSql();
 				fields = new Object[3];
 				fields[0] = caseId(siteId);
 
@@ -1414,7 +1422,7 @@ public abstract class DbSiteService extends BaseSiteService
 			Set targetUpdate = updateSites;
 
 			// read existing
-			String statement = "select SITE_ID, PERMISSION from SAKAI_SITE_USER " + "where USER_ID = ?";
+         String statement =  siteServiceSql.getSiteId4Sql();
 			Object[] fields = new Object[1];
 			fields[0] = userId;
 
@@ -1520,7 +1528,7 @@ public abstract class DbSiteService extends BaseSiteService
 				fields[1] = userId;
 
 				// delete
-				statement = "delete from SAKAI_SITE_USER where SITE_ID = ? and USER_ID = ?";
+            statement =  siteServiceSql.getDeleteUserSql();
 				for (Iterator i = updDeletes.iterator(); i.hasNext();)
 				{
 					String siteId = (String) i.next();
@@ -1541,7 +1549,7 @@ public abstract class DbSiteService extends BaseSiteService
 				}
 
 				// insert
-				statement = "insert into SAKAI_SITE_USER (SITE_ID, USER_ID, PERMISSION) values (?, ?, ?)";
+            statement =  siteServiceSql.getInsertUserSql();
 				fields = new Object[3];
 				fields[1] = userId;
 
@@ -1573,7 +1581,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read site properties from storage into the site's properties.
-		 * 
+		 *
 		 * @param edit
 		 *        The user to read properties for.
 		 */
@@ -1584,7 +1592,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read site properties and all page and tool properties for the site from storage.
-		 * 
+		 *
 		 * @param site
 		 *        The site for which properties are desired.
 		 */
@@ -1625,14 +1633,14 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read properties for all pages in the site
-		 * 
+		 *
 		 * @param site
 		 *        The site to read properties for.
 		 */
 		protected void readSitePageProperties(final BaseSite site)
 		{
 			// get the properties from the db for all pages in the site
-			String sql = "select PAGE_ID, NAME, VALUE from SAKAI_SITE_PAGE_PROPERTY where ( SITE_ID = ? )";
+         String sql =  siteServiceSql.getPagePropertiesSql();
 
 			Object fields[] = new Object[1];
 			fields[0] = site.getId();
@@ -1668,14 +1676,14 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read properties for all tools in the site
-		 * 
+		 *
 		 * @param site
 		 *        The site to read properties for.
 		 */
 		protected void readSiteToolProperties(final BaseSite site)
 		{
 			// get the properties from the db for all pages in the site
-			String sql = "select TOOL_ID, NAME, VALUE from SAKAI_SITE_TOOL_PROPERTY where ( SITE_ID = ? )";
+         String sql =  siteServiceSql.getToolPropertiesSql();
 
 			Object fields[] = new Object[1];
 			fields[0] = site.getId();
@@ -1711,14 +1719,14 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read properties for all groups in the site
-		 * 
+		 *
 		 * @param site
 		 *        The site to read group properties for.
 		 */
 		protected void readSiteGroupProperties(final BaseSite site)
 		{
 			// get the properties from the db for all pages in the site
-			String sql = "select GROUP_ID, NAME, VALUE from SAKAI_SITE_GROUP_PROPERTY where ( SITE_ID = ? )";
+         String sql =  siteServiceSql.getGroupPropertiesSql();
 
 			Object fields[] = new Object[1];
 			fields[0] = site.getId();
@@ -1754,7 +1762,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read page properties from storage into the page's properties.
-		 * 
+		 *
 		 * @param page
 		 *        The page for which properties are desired.
 		 */
@@ -1765,7 +1773,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read tool properties from storage into the tool's properties.
-		 * 
+		 *
 		 * @param tool
 		 *        The tool for which properties are desired.
 		 */
@@ -1776,7 +1784,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read group properties from storage into the group's properties.
-		 * 
+		 *
 		 * @param group
 		 *        The group for which properties are desired.
 		 */
@@ -1787,16 +1795,14 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read site pages from storage into the site's pages.
-		 * 
+		 *
 		 * @param site
 		 *        The site for which pages are desired.
 		 */
 		public void readSitePages(final Site site, final ResourceVector pages)
 		{
 			// read all resources from the db with a where
-			String sql = "select PAGE_ID, TITLE, LAYOUT, POPUP from SAKAI_SITE_PAGE" + " where SITE_ID = ?"
-					+ " order by SITE_ORDER ASC";
-
+         String sql =  siteServiceSql.getPageFields2Sql();
 			Object fields[] = new Object[1];
 			fields[0] = site.getId();
 
@@ -1830,16 +1836,14 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read site page tools from storage into the page's tools.
-		 * 
+		 *
 		 * @param page
 		 *        The page for which tools are desired.
 		 */
 		public void readPageTools(final SitePage page, final ResourceVector tools)
 		{
 			// read all resources from the db with a where
-			String sql = "select TOOL_ID, REGISTRATION, TITLE, LAYOUT_HINTS, PAGE_ORDER from SAKAI_SITE_TOOL"
-					+ " where PAGE_ID = ?" + " order by PAGE_ORDER ASC";
-
+         String sql =  siteServiceSql.getToolFields2Sql();
 			Object fields[] = new Object[1];
 			fields[0] = page.getId();
 
@@ -1874,16 +1878,14 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read tools for all pages from storage into the site's page's tools.
-		 * 
+		 *
 		 * @param site
 		 *        The site for which tools are desired.
 		 */
 		public void readSiteTools(final Site site)
 		{
 			// read all tools for the site
-			String sql = "select TOOL_ID, PAGE_ID, REGISTRATION, TITLE, LAYOUT_HINTS, PAGE_ORDER from SAKAI_SITE_TOOL"
-					+ " where SITE_ID = ?" + " order by PAGE_ID, PAGE_ORDER ASC";
-
+         String sql =  siteServiceSql.getToolFields3Sql();
 			Object fields[] = new Object[1];
 			fields[0] = site.getId();
 
@@ -1934,7 +1936,7 @@ public abstract class DbSiteService extends BaseSiteService
 		 */
 		public void readSiteGroups(final Site site, final Collection groups)
 		{
-			String sql = "select SS.GROUP_ID, SS.TITLE, SS.DESCRIPTION " + "from SAKAI_SITE_GROUP SS where SS.SITE_ID = ?";
+         String sql =  siteServiceSql.getGroupFieldsSql();
 			// TODO: order by? title? -ggolden
 
 			Object fields[] = new Object[1];
@@ -1970,7 +1972,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Get the fields for the database from the edit for this id, and the id again at the end if needed
-		 * 
+		 *
 		 * @param id
 		 *        The resource id
 		 * @param edit
@@ -2044,7 +2046,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 		/**
 		 * Read from the result one set of fields to create a Resource.
-		 * 
+		 *
 		 * @param result
 		 *        The Sql query result.
 		 * @return The Resource object.
