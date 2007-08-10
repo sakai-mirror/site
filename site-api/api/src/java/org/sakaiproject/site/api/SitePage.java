@@ -40,8 +40,10 @@ public interface SitePage extends Edit, Serializable
 
 	/** Layout value for a double column layout. */
 	public static final int LAYOUT_DOUBLE_COL = 1;
+   
+   public static final String PAGE_CATEGORY_PROP = "sitePage.pageCategory";
 
-	/** @return The human readable Title of this SitePage. */
+   /** @return The human readable Title of this SitePage. */
 	public String getTitle();
 
 	/** @return the layout for this page. */
@@ -166,4 +168,6 @@ public interface SitePage extends Edit, Serializable
 	 * get the 0 based index position of the page within the site's pages.
 	 */
 	public int getPosition();
+   
+   public void setupPageCategory(String toolId);
 }

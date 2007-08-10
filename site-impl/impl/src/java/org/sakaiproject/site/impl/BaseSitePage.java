@@ -21,11 +21,7 @@
 
 package org.sakaiproject.site.impl;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Stack;
-import java.util.Vector;
+import java.util.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -40,6 +36,7 @@ import org.sakaiproject.util.BaseResourceProperties;
 import org.sakaiproject.util.BaseResourcePropertiesEdit;
 import org.sakaiproject.util.StringUtil;
 import org.sakaiproject.tool.api.Tool;
+import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -552,14 +549,23 @@ public class BaseSitePage implements SitePage, Identifiable
 		return ((ResourceVector) m_site.getPages()).indexOf(this);
 	}
 
-	/**
-	 * @inheritDoc
-	 */
-	public void moveDown()
-	{
-		if (m_site == null) return;
-		((ResourceVector) m_site.getPages()).moveDown(this);
-	}
+   public void setupPageCategory(String toolId) {
+      String defaultCategory = null;
+      Map<String, String> toolCategories = ServerConfigurationService.getToolToCategoryMap(m_site.getType());
+      defaultCategory = toolCategories.get(toolId);
+      if (getProperties().get(PAGE_CATEGORY_PROP) == null && defaultCategory != null) {
+         getProperties().addProperty(PAGE_CATEGORY_PROP, defaultCategory);
+      }
+   }
+
+   /**
+    * @inheritDoc
+    */
+   public void moveDown()
+   {
+      if (m_site == null) return;
+      ((ResourceVector) m_site.getPages()).moveDown(this);
+   }
 
 	/**
 	 * @inheritDoc

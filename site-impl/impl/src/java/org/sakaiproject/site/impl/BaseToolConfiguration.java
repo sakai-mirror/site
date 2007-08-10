@@ -103,7 +103,8 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 		m_pageOrder = pageOrder;
 
 		m_configLazy = true;
-	}
+      setPageCategory();
+   }
 
 	/**
 	 * ReConstruct - if we don't have a page to follow up to get to certain page and site info.
@@ -139,7 +140,8 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 		m_pageOrder = pageOrder;
 
 		m_configLazy = true;
-	}
+      setPageCategory();
+   }
 
 	/**
 	 * Construct as a copy of another.
@@ -191,7 +193,8 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 			}
 		}
 		m_configLazy = bOther.m_configLazy;
-	}
+      setPageCategory();
+   }
 
 	/**
 	 * Construct using a tool registration for default information.
@@ -221,7 +224,8 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 		super(IdManager.createUuid(), reg.getId(), reg, null, null, null);
 
 		m_page = page;
-	}
+      setPageCategory();
+   }
 
 	/**
 	 * Construct using a tool id.
@@ -236,7 +240,8 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 		super(IdManager.createUuid(), toolId, null, null, null, null);
 
 		m_page = page;
-	}
+      setPageCategory();
+   }
 
 	/**
 	 * Construct from XML element.
@@ -267,7 +272,9 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 		for (int i = 0; i < length; i++)
 		{
 			Node child = children.item(i);
-			if (child.getNodeType() != Node.ELEMENT_NODE) continue;
+         if (child.getNodeType() != Node.ELEMENT_NODE) {
+            continue;
+         }
 			Element element = (Element) child;
 
 			// look for properties
@@ -277,7 +284,8 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 				Xml.xmlToProperties(m_config, element);
 			}
 		}
-	}
+      setPageCategory();
+   }
 
 	/**
 	 * {@inheritDoc}
@@ -317,9 +325,13 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	{
 		try
 		{
-			if (m_layoutHints == null) return null;
+         if (m_layoutHints == null) {
+            return null;
+         }
 			String[] parts = StringUtil.split(m_layoutHints, ",");
-			if (parts.length < 2) return null;
+         if (parts.length < 2) {
+            return null;
+         }
 			int[] rv = new int[2];
 			rv[0] = Integer.parseInt(parts[0]);
 			rv[1] = Integer.parseInt(parts[1]);
@@ -445,9 +457,15 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 
 		element.setAttribute("id", getId());
 		String toolId = getToolId();
-		if (toolId != null) element.setAttribute("toolId", toolId);
-		if (m_title != null) element.setAttribute("title", m_title);
-		if (m_layoutHints != null) element.setAttribute("layoutHints", m_layoutHints);
+      if (toolId != null) {
+         element.setAttribute("toolId", toolId);
+      }
+      if (m_title != null) {
+         element.setAttribute("title", m_title);
+      }
+      if (m_layoutHints != null) {
+         element.setAttribute("layoutHints", m_layoutHints);
+      }
 
 		// properties
 		Xml.propertiesToXml(getPlacementConfig(), doc, stack);
@@ -469,4 +487,16 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 		EventTrackingService.post(EventTrackingService.newEvent(SiteService.SECURE_UPDATE_SITE, SiteService
 				.siteReference(getSiteId()), true));
 	}
+   
+   protected void setPageCategory() {
+      m_page.setupPageCategory(m_toolId);
+   }
+
+   /**
+    * {@inheritDoc}
+    */
+   public void setTool(String toolId, Tool tool) {
+      super.setTool(toolId, tool);
+      setPageCategory();
+   }
 }
