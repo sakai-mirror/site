@@ -21,12 +21,7 @@
 
 package org.sakaiproject.site.impl;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.Stack;
-import java.util.Vector;
+import java.util.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -857,6 +852,9 @@ public class BaseSite implements Site
 		List order = ((BaseSiteService) (SiteService.getInstance())).serverConfigurationService().getToolOrder(getType());
 		if (order.isEmpty()) return getPages();
 
+		Map<String, String> pageCategoriesByTool = 
+         ((BaseSiteService) (SiteService.getInstance())).serverConfigurationService().getToolToCategoryMap(getType());
+
 		// get a copy we can modify without changing the site!
 		List pages = new Vector(getPages());
 
@@ -872,7 +870,8 @@ public class BaseSite implements Site
 			for (Iterator p = pages.iterator(); p.hasNext();)
 			{
 				SitePage page = (SitePage) p.next();
-				List tools = page.getTools();
+            page.getProperties().removeProperty(SitePage.PAGE_CATEGORY_PROP);
+            List tools = page.getTools();
 				for (Iterator t = tools.iterator(); t.hasNext();)
 				{
 					ToolConfiguration tool = (ToolConfiguration) t.next();
@@ -880,7 +879,10 @@ public class BaseSite implements Site
 					{
 						// this page has this tool, so move it from the pages to the newOrder
 						newOrder.add(page);
-						p.remove();
+                  if (pageCategoriesByTool.get(toolId) != null) {
+                     page.getProperties().addProperty(SitePage.PAGE_CATEGORY_PROP, pageCategoriesByTool.get(toolId));
+                  }
+                  p.remove();
 						break;
 					}
 				}
