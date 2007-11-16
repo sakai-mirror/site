@@ -31,8 +31,8 @@ import org.apache.commons.logging.LogFactory;
 import org.sakaiproject.event.cover.EventTrackingService;
 import org.sakaiproject.id.cover.IdManager;
 import org.sakaiproject.site.api.SitePage;
+import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.ToolConfiguration;
-import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.tool.api.Tool;
 import org.sakaiproject.tool.cover.ToolManager;
 import org.sakaiproject.util.StringUtil;
@@ -78,6 +78,13 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	/** The order within the page. */
 	protected int m_pageOrder = -1;
 
+	// Reference to our service
+	private BaseSiteService m_service;
+	
+	protected BaseSiteService getService() {
+	  return m_service;
+	}
+	
 	/**
 	 * ReConstruct
 	 * 
@@ -95,13 +102,14 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 *        The order within the page.
 	 */
 	protected BaseToolConfiguration(SitePage page, String id, String toolId,
-			String title, String layoutHints, int pageOrder)
+			String title, String layoutHints, int pageOrder, BaseSiteService service)
 	{
 		super(id, toolId, ToolManager.getTool(toolId), null, null, title);
 
 		m_page = page;
 		m_layoutHints = layoutHints;
 		m_pageOrder = pageOrder;
+		m_service = service;
 
 		m_configLazy = true;
 		setPageCategory();
@@ -129,7 +137,7 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 *        The order within the page.
 	 */
 	protected BaseToolConfiguration(String id, String toolId, String title,
-			String layoutHints, String pageId, String siteId, String skin, int pageOrder)
+			String layoutHints, String pageId, String siteId, String skin, int pageOrder, BaseSiteService service)
 	{
 		super(id, toolId, ToolManager.getTool(toolId), null, null, title);
 
@@ -140,6 +148,7 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 		m_siteId = siteId;
 		m_skin = skin;
 		m_pageOrder = pageOrder;
+		m_service = service;
 
 		m_configLazy = true;
 		setPageCategory();
@@ -155,7 +164,7 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param exact
 	 *        If true, we copy ids - else we generate a new one.
 	 */
-	protected BaseToolConfiguration(ToolConfiguration other, SitePage page, boolean exact)
+	protected BaseToolConfiguration(ToolConfiguration other, SitePage page, boolean exact, BaseSiteService service)
 	{
 		m_page = page;
 		BaseToolConfiguration bOther = (BaseToolConfiguration) other;
@@ -174,11 +183,12 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 		m_layoutHints = other.getLayoutHints();
 		m_pageId = bOther.m_pageId;
 		m_pageOrder = bOther.m_pageOrder;
+		m_service = service;
 
 		m_siteId = getContainingPage().getContainingSite().getId();
 		m_skin = bOther.m_skin;
 
-		Hashtable h = other.getPlacementConfig();
+		Hashtable<Object, Object> h = other.getPlacementConfig();
 		// exact copying of ToolConfiguration items vs replacing occurence of
 		// site id within item value, depending on "exact" setting -zqian
 		if (exact)
@@ -187,7 +197,7 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 		}
 		else
 		{
-			for (Enumeration e = h.keys(); e.hasMoreElements();)
+			for (Enumeration<Object> e = h.keys(); e.hasMoreElements();)
 			{
 				// replace site id string inside configuration
 				String pOtherConfig = (String) e.nextElement();
@@ -208,11 +218,12 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param page
 	 *        The page in which this tool lives.
 	 */
-	protected BaseToolConfiguration(SitePage page)
+	protected BaseToolConfiguration(SitePage page, BaseSiteService service)
 	{
 		super(IdManager.createUuid(), null, null, null, null, null);
 
 		m_page = page;
+		m_service = service;
 	}
 
 	/**
@@ -223,11 +234,12 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param page
 	 *        The page in which this tool lives.
 	 */
-	protected BaseToolConfiguration(Tool reg, SitePage page)
+	protected BaseToolConfiguration(Tool reg, SitePage page, BaseSiteService service)
 	{
 		super(IdManager.createUuid(), reg.getId(), reg, null, null, null);
 
 		m_page = page;
+		m_service = service;
 		setPageCategory();
 	}
 
@@ -239,11 +251,12 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param page
 	 *        The page in which this tool lives.
 	 */
-	protected BaseToolConfiguration(String toolId, SitePage page)
+	protected BaseToolConfiguration(String toolId, SitePage page, BaseSiteService service)
 	{
 		super(IdManager.createUuid(), toolId, null, null, null, null);
 
 		m_page = page;
+		m_service = service;
 		setPageCategory();
 	}
 
@@ -255,11 +268,12 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param page
 	 *        The page in which this tool lives.
 	 */
-	protected BaseToolConfiguration(Element el, SitePage page)
+	protected BaseToolConfiguration(Element el, SitePage page, BaseSiteService service)
 	{
 		super();
 
 		m_page = page;
+		m_service = service;
 
 		m_id = el.getAttribute("id");
 		m_toolId = StringUtil.trimToNull(el.getAttribute("toolId"));
@@ -300,8 +314,7 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 		// if the config has not yet been read, read it
 		if (m_configLazy)
 		{
-			((BaseSiteService) (SiteService.getInstance())).m_storage.readToolProperties(
-					this, m_config);
+			getService().m_storage.readToolProperties(this, m_config);
 			m_configLazy = false;
 		}
 
@@ -430,7 +443,7 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 			return;
 		}
 
-		((ResourceVector) m_page.getTools()).moveUp(this);
+		((ResourceVector<?>) m_page.getTools()).moveUp(this);
 	}
 
 	/**
@@ -444,7 +457,7 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 			return;
 		}
 
-		((ResourceVector) m_page.getTools()).moveDown(this);
+		((ResourceVector<?>) m_page.getTools()).moveDown(this);
 	}
 
 	/**
@@ -484,7 +497,7 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 
 		stack.pop();
 
-		return (Element) element;
+		return element;
 	}
 
 	/**
@@ -493,11 +506,11 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	public void save()
 	{
 		// TODO: security? version?
-		((BaseSiteService) (SiteService.getInstance())).m_storage.saveToolConfig(this);
+		getService().m_storage.saveToolConfig(this);
 
 		// track the site change
 		EventTrackingService.post(EventTrackingService.newEvent(
-				SiteService.SECURE_UPDATE_SITE, SiteService.siteReference(getSiteId()),
+				SiteService.SECURE_UPDATE_SITE, getService().siteReference(getSiteId()),
 				true));
 	}
 

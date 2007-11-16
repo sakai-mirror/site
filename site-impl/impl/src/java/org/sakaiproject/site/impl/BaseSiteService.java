@@ -22,18 +22,15 @@
 package org.sakaiproject.site.impl;
 
 import java.io.PrintWriter;
-import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Observer;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Stack;
-import java.util.Vector;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -52,18 +49,14 @@ import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.entity.api.ContextObserver;
 import org.sakaiproject.entity.api.Edit;
 import org.sakaiproject.entity.api.Entity;
-import org.sakaiproject.entity.api.EntityAccessOverloadException;
-import org.sakaiproject.entity.api.EntityCopyrightException;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.EntityNotDefinedException;
-import org.sakaiproject.entity.api.EntityPermissionException;
 import org.sakaiproject.entity.api.EntityProducer;
 import org.sakaiproject.entity.api.HttpAccess;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.event.api.EventTrackingService;
-import org.sakaiproject.exception.IdInvalidException;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.IdUsedException;
 import org.sakaiproject.exception.PermissionException;
@@ -278,10 +271,9 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	 */
 	protected void regenerateAllSiteIds()
 	{
-		List sites = m_storage.getAll();
-		for (Iterator iSites = sites.iterator(); iSites.hasNext();)
+		List<Site> sites = m_storage.getAll();
+		for (Site site: sites)
 		{
-			Site site = (Site) iSites.next();
 			Site edit = m_storage.get(site.getId());
 			if (site != null)
 			{
@@ -533,7 +525,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 				rv = (Site) o;
 
 				// return a copy of the site from the cache
-				rv = new BaseSite(rv, true);
+				rv = new BaseSite(rv, true, this);
 
 				return rv;
 			}
@@ -553,7 +545,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		// cache a copy
 		if (m_siteCache != null)
 		{
-			Site copy = new BaseSite(rv, true);
+			Site copy = new BaseSite(rv, true, this);
 			m_siteCache.put(ref, copy, m_cacheSeconds);
 		}
 
@@ -894,20 +886,20 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	 */
 	protected void saveGroupAzgs(Site site)
 	{
-		for (Iterator i = site.getGroups().iterator(); i.hasNext();)
+		for (Group group: site.getGroups())
 		{
-			BaseGroup group = (BaseGroup) i.next();
-			if (group.m_azgChanged)
+		    BaseGroup bgroup = (BaseGroup) group;
+			if (bgroup.m_azgChanged)
 			{
 				try
 				{
-					authzGroupService().save(group.m_azg);
+					authzGroupService().save(bgroup.m_azg);
 				}
 				catch (Throwable t)
 				{
 					M_log.warn(".saveAzgs - group: " + group.getTitle() + " : " + t);
 				}
-				group.m_azgChanged = false;
+				bgroup.m_azgChanged = false;
 			}
 		}
 	}
@@ -950,7 +942,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	/**
 	 * @inheritDoc
 	 */
-	public Site addSite(String id, String type) throws IdInvalidException, IdUsedException, PermissionException
+	public Site addSite(String id, String type) throws IdUsedException, PermissionException
 	{
 		// check for a valid site name
 		Validator.checkResourceId(id);
@@ -983,7 +975,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	/**
 	 * @inheritDoc
 	 */
-	public Site addSite(String id, Site other) throws IdInvalidException, IdUsedException, PermissionException
+	public Site addSite(String id, Site other) throws IdUsedException, PermissionException
 	{
 		// check for a valid site name
 		Validator.checkResourceId(id);
@@ -1242,7 +1234,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 			if (rv != null)
 			{
 				// return a copy from the cache
-				rv = new BaseToolConfiguration(rv, rv.getContainingPage(), true);
+				rv = new BaseToolConfiguration(rv, rv.getContainingPage(), true, this);
 				return rv;
 			}
 
@@ -1286,7 +1278,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 			rv = m_siteCache.getPage(id);
 			if (rv != null)
 			{
-				rv = new BaseSitePage(rv, rv.getContainingSite(), true);
+				rv = new BaseSitePage(rv, rv.getContainingSite(), true, this);
 				return rv;
 			}
 
@@ -1463,7 +1455,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	/**
 	 * {@inheritDoc}
 	 */
-	public List getSiteTypes()
+	public List<String> getSiteTypes()
 	{
 		return m_storage.getSiteTypes();
 	}
@@ -1471,7 +1463,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	/**
 	 * @inheritDoc
 	 */
-	public List getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort,
+	public List<Site> getSites(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, SortType sort,
 			PagingPosition page)
 	{
 		return m_storage.getSites(type, ofType, criteria, propertyCriteria, sort, page);
@@ -1480,7 +1472,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	/**
 	 * @inheritDoc
 	 */
-	public int countSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria)
+	public int countSites(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria)
 	{
 		return m_storage.countSites(type, ofType, criteria, propertyCriteria);
 	}
@@ -1488,7 +1480,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	/**
 	 * @inheritDoc
 	 */
-	public void setSiteSecurity(String siteId, Set updateUsers, Set visitUnpUsers, Set visitUsers)
+	public void setSiteSecurity(String siteId, Set<String> updateUsers, Set<String> visitUnpUsers, Set<String> visitUsers)
 	{
 		m_storage.setSiteSecurity(siteId, updateUsers, visitUnpUsers, visitUsers);
 
@@ -1499,7 +1491,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	/**
 	 * @inheritDoc
 	 */
-	public void setUserSecurity(String userId, Set updateSites, Set visitUnpSites, Set visitSites)
+	public void setUserSecurity(String userId, Set<String> updateSites, Set<String> visitUnpSites, Set<String> visitSites)
 	{
 		m_storage.setUserSecurity(userId, updateSites, visitUnpSites, visitSites);
 	}
@@ -1532,8 +1524,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		return new HttpAccess()
 		{
 			public void handleAccess(HttpServletRequest req, HttpServletResponse res, Reference ref,
-					Collection copyrightAcceptedRefs) throws EntityPermissionException, EntityNotDefinedException,
-					EntityAccessOverloadException, EntityCopyrightException
+					Collection copyrightAcceptedRefs) throws EntityNotDefinedException
 			{
 				try
 				{
@@ -1685,12 +1676,12 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	/**
 	 * {@inheritDoc}
 	 */
-	public Collection getEntityAuthzGroups(Reference ref, String userId)
+	public Collection<String> getEntityAuthzGroups(Reference ref, String userId)
 	{
 		// double check that it's mine
 		if (APPLICATION_ID != ref.getType()) return null;
 
-		Collection rv = new Vector();
+		Collection<String> rv = new ArrayList<String>();
 
 		try
 		{
@@ -1766,9 +1757,8 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		securityService().clearAdvisors();
 
 		// offer to all EntityProducers that are ContexObservers
-		for (Iterator i = entityManager().getEntityProducers().iterator(); i.hasNext();)
+		for (EntityProducer ep: entityManager().getEntityProducers())
 		{
-			EntityProducer ep = (EntityProducer) i.next();
 			if (ep instanceof ContextObserver)
 			{
 				try
@@ -1811,9 +1801,8 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		}
 
 		// send to all EntityProducers that are ContextObservers
-		for (Iterator i = entityManager().getEntityProducers().iterator(); i.hasNext();)
+		for (EntityProducer ep: entityManager().getEntityProducers())
 		{
-			EntityProducer ep = (EntityProducer) i.next();
 			if (ep instanceof ContextObserver)
 			{
 				try
@@ -1876,16 +1865,14 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		String groupAzgTemplate = groupAzgTemplate(site);
 
 		// enable a realm for each group: use the same template as for the site, but don't assign a user maintain in the group's azg
-		for (Iterator iGroups = site.getGroups().iterator(); iGroups.hasNext();)
+		for (Group group: site.getGroups()) 
 		{
-			Group group = (Group) iGroups.next();
 			enableAuthorizationGroup(group.getReference(), groupAzgTemplate, null, "!group.template");
 		}
 
 		// disable the authorization groups for any groups deleted in this edit
-		for (Iterator iGroups = site.m_deletedGroups.iterator(); iGroups.hasNext();)
+		for (Group group: site.m_deletedGroups)
 		{
-			Group group = (Group) iGroups.next();
 			disableAuthorizationGroup(group.getReference());
 		}
 	}
@@ -1899,9 +1886,8 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	protected void disableAzg(Site site)
 	{
 		// disable a realm for each group
-		for (Iterator iGroups = site.getGroups().iterator(); iGroups.hasNext();)
+		for (Group group: site.getGroups())
 		{
-			Group group = (Group) iGroups.next();
 			disableAuthorizationGroup(group.getReference());
 		}
 
@@ -1980,7 +1966,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		// see if it exists already
 		try
 		{
-			AuthzGroup realm = authzGroupService().getAuthzGroup(ref);
+			authzGroupService().getAuthzGroup(ref);
 		}
 		catch (GroupNotDefinedException un)
 		{
@@ -2005,15 +1991,13 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 			// add the realm
 			try
 			{
-				AuthzGroup realm = null;
-
 				if (template == null)
 				{
-					realm = authzGroupService().addAuthzGroup(ref);
+					authzGroupService().addAuthzGroup(ref);
 				}
 				else
 				{
-					realm = authzGroupService().addAuthzGroup(ref, template, userId);
+					authzGroupService().addAuthzGroup(ref, template, userId);
 				}
 			}
 			catch (Exception e)
@@ -2080,7 +2064,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		 * 
 		 * @return The list of all sites.
 		 */
-		public List getAll();
+		public List<Site> getAll();
 
 		/**
 		 * Add a new site with this id.
@@ -2131,7 +2115,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		 * 
 		 * @return A list (String) of all used site types.
 		 */
-		public List getSiteTypes();
+		public List<String> getSiteTypes();
 
 		/**
 		 * Access a list of Site objets that meet specified criteria.
@@ -2150,7 +2134,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		 *        The PagePosition subset of items to return.
 		 * @return The List (Site) of Site objets that meet specified criteria.
 		 */
-		public List getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort,
+		public List<Site> getSites(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, SortType sort,
 				PagingPosition page);
 
 		/**
@@ -2166,7 +2150,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		 *        Additional selection criteria: sites returned will have a property named to match each key in the map, whose values match (somewhere in their value) the value in the map (may be null or empty).
 		 * @return The count of Site objets that meet specified criteria.
 		 */
-		public int countSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria);
+		public int countSites(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria);
 
 		/**
 		 * Access the ToolConfiguration that has this id, if one is defined, else return null. The tool may be on any SitePage in any site.
@@ -2250,7 +2234,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		 * @param site
 		 *        The site for which pages are desired.
 		 */
-		public void readSitePages(Site site, ResourceVector pages);
+		public void readSitePages(Site site, ResourceVector<BaseSitePage> pages);
 
 		/**
 		 * Read site page tools from storage into the page's tools.
@@ -2258,7 +2242,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		 * @param page
 		 *        The page for which tools are desired.
 		 */
-		public void readPageTools(SitePage page, ResourceVector tools);
+		public void readPageTools(SitePage page, ResourceVector<BaseToolConfiguration> tools);
 
 		/**
 		 * Read tools for all pages from storage into the site's page's tools.
@@ -2289,7 +2273,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		 * @param visitUsers
 		 *        The set of String User Ids who have visit access.
 		 */
-		public void setSiteSecurity(String siteId, Set updateUsers, Set visitUnpUsers, Set visitUsers);
+		public void setSiteSecurity(String siteId, Set<String> updateUsers, Set<String> visitUnpUsers, Set<String> visitUsers);
 
 		/**
 		 * Establish the internal security for user for all sites. Previous security settings are replaced for this user. Assigning a user with update implies the two reads; assigning a user with unp read implies the other read.
@@ -2303,7 +2287,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		 * @param visitSites
 		 *        The set of String site ids where the user has visit access.
 		 */
-		public void setUserSecurity(String userId, Set updateSites, Set visitUnpSites, Set visitSites);
+		public void setUserSecurity(String userId, Set<String> updateSites, Set<String> visitUnpSites, Set<String> visitSites);
 
 		/**
 		 * Write an updated tool configuration to the database.
@@ -2330,7 +2314,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		 * @param groups
 		 *        The Collection to fill in.
 		 */
-		public void readSiteGroups(Site site, Collection groups);
+		public void readSiteGroups(Site site, Collection<BaseGroup> groups);
 	}
 
 	/**********************************************************************************************************************************************************************************************************************************************************
@@ -2386,7 +2370,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	 */
 	public Entity newResource(Entity container, String id, Object[] others)
 	{
-		return new BaseSite(id);
+		return new BaseSite(id, this);
 	}
 
 	/**
@@ -2414,7 +2398,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	 */
 	public Entity newResource(Entity container, Entity other)
 	{
-		return new BaseSite((Site) other, true);
+		return new BaseSite((Site) other, true, this);
 	}
 
 	/**
@@ -2466,7 +2450,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	 */
 	public Edit newResourceEdit(Entity container, String id, Object[] others)
 	{
-		BaseSite e = new BaseSite(id);
+		BaseSite e = new BaseSite(id, this);
 		e.activate();
 		return e;
 	}
@@ -2496,7 +2480,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	 */
 	public Edit newResourceEdit(Entity container, Entity other)
 	{
-		BaseSite e = new BaseSite((Site) other);
+		BaseSite e = new BaseSite((Site) other, this);
 		e.activate();
 		return e;
 	}
@@ -2574,7 +2558,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		try
 		{
 			// if the target site already exists, don't change the site attributes
-			Site s = getSite(siteId);
+			getSite(siteId);
 		}
 		catch (IdUnusedException e)
 		{
@@ -2600,7 +2584,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 				}
 
 				// assign source site's attributes to the target site
-				((BaseSite) site).set(new BaseSite(el), false);
+				site.set(new BaseSite(el, this), false);
 
 				try
 				{
@@ -2659,7 +2643,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 					// The group we get from the siteCache is a group from the actual cached site, so it's containing site is the actual cached site.
 
 					// get a copy of the site from the cache
-					Site site = new BaseSite(group.getContainingSite(), true);
+					Site site = new BaseSite(group.getContainingSite(), true, this);
 
 					// get the group from there
 					rv = site.getGroup(refOrId);
@@ -2710,9 +2694,8 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		try
 		{
 			Site site = getDefinedSite(siteId);
-			for (Iterator i = site.getGroups().iterator(); i.hasNext();)
+			for (Group group: site.getGroups())
 			{
-				Group group = (Group) i.next();
 				group.keepIntersection(site);
 			}
 

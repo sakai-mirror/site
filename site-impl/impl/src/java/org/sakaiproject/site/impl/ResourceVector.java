@@ -30,7 +30,7 @@ import java.util.Vector;
  * ResourceVector is a Vector of Identifiables....
  * </p>
  */
-public class ResourceVector extends Vector
+public class ResourceVector<T extends Identifiable> extends Vector<T>
 {
 	/** A fixed class serian number. */
 	private static final long serialVersionUID = 1L;
@@ -54,7 +54,7 @@ public class ResourceVector extends Vector
 	/**
 	 * Constructor.
 	 */
-	public ResourceVector(Collection c)
+	public ResourceVector(Collection<T> c)
 	{
 		super(c);
 	}
@@ -76,9 +76,9 @@ public class ResourceVector extends Vector
 	 */
 	public Identifiable getById(String id)
 	{
-		for (Iterator i = iterator(); i.hasNext();)
+		for (Iterator<T> i = iterator(); i.hasNext();)
 		{
-			Identifiable r = (Identifiable) i.next();
+			Identifiable r = i.next();
 			if (r.getId().equals(id)) return r;
 		}
 
@@ -97,7 +97,7 @@ public class ResourceVector extends Vector
 		if (pos == -1) return;
 		if (pos == 0) return;
 		remove(entry);
-		add(pos - 1, entry);
+		add(pos - 1, (T) entry);
 	}
 
 	/**
@@ -112,7 +112,7 @@ public class ResourceVector extends Vector
 		if (pos == -1) return;
 		if (pos == size() - 1) return;
 		remove(entry);
-		add(pos + 1, entry);
+		add(pos + 1, (T) entry);
 	}
 
 	/**
@@ -124,6 +124,6 @@ public class ResourceVector extends Vector
 	public void moveTo(Identifiable entry, int newPos)
 	{
 		remove(entry);
-		add(newPos, entry);
+		add(newPos, (T) entry);
 	}
 }

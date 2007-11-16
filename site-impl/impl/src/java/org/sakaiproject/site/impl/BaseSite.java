@@ -21,6 +21,7 @@
 
 package org.sakaiproject.site.impl;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -44,8 +45,8 @@ import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
+import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.ToolConfiguration;
-import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.cover.TimeService;
 import org.sakaiproject.tool.api.Session;
@@ -82,7 +83,7 @@ public class BaseSite implements Site
 	protected boolean m_active = false;
 
 	/** List of groups deleted in this edit pass. */
-	protected Collection m_deletedGroups = new Vector();
+	protected Collection<BaseGroup> m_deletedGroups = new Vector<BaseGroup>();
 
 	/** The site id. */
 	protected String m_id = null;
@@ -115,7 +116,7 @@ public class BaseSite implements Site
 	protected ResourcePropertiesEdit m_properties = null;
 
 	/** The list of site pages for this site. */
-	protected ResourceVector m_pages = null;
+	protected ResourceVector<BaseSitePage> m_pages = null;
 
 	/** Set true while the pages have not yet been read in for a site. */
 	protected boolean m_pagesLazy = false;
@@ -142,7 +143,7 @@ public class BaseSite implements Site
 	protected Time m_lastModifiedTime = null;
 
 	/** The list of site groups for this site. */
-	protected ResourceVector m_groups = null;
+	protected ResourceVector<BaseGroup> m_groups = null;
 
 	/** Set true while the groups have not yet been read in for a site. */
 	protected boolean m_groupsLazy = false;
@@ -162,29 +163,36 @@ public class BaseSite implements Site
 	 */
 	protected boolean m_customPageOrdered = false;
 
+	// Reference to our service
+	private BaseSiteService m_service;
+	
+	protected BaseSiteService getService() {
+	  return m_service;
+	}
 	/**
 	 * Construct.
 	 * 
 	 * @param id
 	 *        The site id.
 	 */
-	public BaseSite(String id)
+	public BaseSite(String id, BaseSiteService service)
 	{
 		m_id = id;
+		m_service = service;
 
 		// setup for properties
 		m_properties = new BaseResourcePropertiesEdit();
 
 		// set up the page list
-		m_pages = new ResourceVector();
+		m_pages = new ResourceVector<BaseSitePage>();
 
 		// set up the groups collection
-		m_groups = new ResourceVector();
+		m_groups = new ResourceVector<BaseGroup>();
 
 		// if the id is not null (a new site, rather than a reconstruction)
 		// add the automatic (live) properties
 		if (m_id != null)
-			((BaseSiteService) (SiteService.getInstance())).addLiveProperties(this);
+			getService().addLiveProperties(this);
 	}
 
 	/**
@@ -196,8 +204,9 @@ public class BaseSite implements Site
 	 *        If true, we copy ids - else we generate new ones for site, page
 	 *        and tools.
 	 */
-	public BaseSite(Site other)
+	public BaseSite(Site other, BaseSiteService service)
 	{
+		m_service = service;
 		BaseSite bOther = (BaseSite) other;
 		set(bOther, true);
 	}
@@ -211,8 +220,9 @@ public class BaseSite implements Site
 	 *        If true, we copy ids - else we generate new ones for site, page
 	 *        and tools.
 	 */
-	public BaseSite(Site other, boolean exact)
+	public BaseSite(Site other, boolean exact, BaseSiteService service)
 	{
+		m_service = service;
 		BaseSite bOther = (BaseSite) other;
 		set(bOther, exact);
 	}
@@ -223,16 +233,17 @@ public class BaseSite implements Site
 	 * @param el
 	 *        The message in XML in a DOM element.
 	 */
-	public BaseSite(Element el)
+	public BaseSite(Element el, BaseSiteService service)
 	{
+		m_service = service;
 		// setup for properties
 		m_properties = new BaseResourcePropertiesEdit();
 
 		// setup for page list
-		m_pages = new ResourceVector();
+		m_pages = new ResourceVector<BaseSitePage>();
 
 		// setup for the groups list
-		m_groups = new ResourceVector();
+		m_groups = new ResourceVector<BaseGroup>();
 
 		m_id = el.getAttribute("id");
 		m_title = StringUtil.trimToNull(el.getAttribute("title"));
@@ -409,7 +420,7 @@ public class BaseSite implements Site
 					Element pageEl = (Element) pageNode;
 					if (!pageEl.getTagName().equals("page")) continue;
 
-					BaseSitePage page = new BaseSitePage(pageEl, this);
+					BaseSitePage page = new BaseSitePage(pageEl, this, getService());
 					m_pages.add(page);
 				}
 
@@ -459,16 +470,16 @@ public class BaseSite implements Site
 			String description, String iconUrl, String infoUrl, String skin,
 			boolean published, boolean joinable, boolean pubView, String joinRole,
 			boolean isSpecial, boolean isUser, String createdBy, Time createdOn,
-			String modifiedBy, Time modifiedOn, boolean customPageOrdered)
+			String modifiedBy, Time modifiedOn, boolean customPageOrdered, BaseSiteService service)
 	{
 		// setup for properties
 		m_properties = new BaseResourcePropertiesEdit();
 
 		// set up the page list
-		m_pages = new ResourceVector();
+		m_pages = new ResourceVector<BaseSitePage>();
 
 		// set up the groups collection
-		m_groups = new ResourceVector();
+		m_groups = new ResourceVector<BaseGroup>();
 
 		m_id = id;
 		m_title = title;
@@ -549,10 +560,10 @@ public class BaseSite implements Site
 		}
 		else
 		{
-			Iterator l = pOther.getPropertyNames();
+			Iterator<String> l = pOther.getPropertyNames();
 			while (l.hasNext())
 			{
-				String pOtherName = (String) l.next();
+				String pOtherName = l.next();
 				m_properties.addProperty(pOtherName, pOther.getProperty(pOtherName)
 						.replaceAll(other.getId(), getId()));
 			}
@@ -561,20 +572,18 @@ public class BaseSite implements Site
 				.setLazy(((BaseResourceProperties) other.getProperties()).isLazy());
 
 		// deep copy the pages
-		m_pages = new ResourceVector();
-		for (Iterator iPages = other.getPages().iterator(); iPages.hasNext();)
+		m_pages = new ResourceVector<BaseSitePage>();
+		for (SitePage page: other.getPages())
 		{
-			BaseSitePage page = (BaseSitePage) iPages.next();
-			m_pages.add(new BaseSitePage(page, this, exact));
+			m_pages.add(new BaseSitePage(page, this, exact, getService()));
 		}
 		m_pagesLazy = other.m_pagesLazy;
 
 		// deep copy the groups
-		m_groups = new ResourceVector();
-		for (Iterator iGroups = other.getGroups().iterator(); iGroups.hasNext();)
+		m_groups = new ResourceVector<BaseGroup>();
+		for (Group group: other.getGroups())
 		{
-			Group group = (Group) iGroups.next();
-			m_groups.add(new BaseGroup(group, this, exact));
+			m_groups.add(new BaseGroup(group, this, exact, getService()));
 		}
 		m_groupsLazy = other.m_groupsLazy;
 	}
@@ -600,7 +609,7 @@ public class BaseSite implements Site
 		{
 			siteString = "/" + controllingPortal + "/";
 		}
-		return ((BaseSiteService) (SiteService.getInstance()))
+		return getService()
 				.serverConfigurationService().getPortalUrl()
 				+ siteString + m_id;
 	}
@@ -610,7 +619,7 @@ public class BaseSite implements Site
 	 */
 	public String getReference()
 	{
-		return ((BaseSiteService) (SiteService.getInstance())).siteReference(m_id);
+		return getService().siteReference(m_id);
 	}
 
 	/**
@@ -637,7 +646,7 @@ public class BaseSite implements Site
 		// if lazy, resolve
 		if (((BaseResourceProperties) m_properties).isLazy())
 		{
-			((BaseSiteService) (SiteService.getInstance())).m_storage.readSiteProperties(
+			getService().m_storage.readSiteProperties(
 					this, m_properties);
 			((BaseResourcePropertiesEdit) m_properties).setLazy(false);
 		}
@@ -764,8 +773,7 @@ public class BaseSite implements Site
 	 */
 	public String getIconUrlFull()
 	{
-		return ((BaseSiteService) (SiteService.getInstance()))
-				.convertReferenceUrl(m_icon);
+		return getService().convertReferenceUrl(m_icon);
 	}
 
 	/**
@@ -783,19 +791,17 @@ public class BaseSite implements Site
 	{
 		if (m_info == null) return null;
 
-		return ((BaseSiteService) (SiteService.getInstance()))
-				.convertReferenceUrl(m_info);
+		return getService().convertReferenceUrl(m_info);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public List getPages()
+	public List<? extends SitePage> getPages()
 	{
 		if (m_pagesLazy)
 		{
-			((BaseSiteService) (SiteService.getInstance())).m_storage.readSitePages(this,
-					m_pages);
+			getService().m_storage.readSitePages(this, m_pages);
 			m_pagesLazy = false;
 		}
 
@@ -805,12 +811,11 @@ public class BaseSite implements Site
 	/**
 	 * {@inheritDoc}
 	 */
-	public Collection getGroups()
+	public Collection<? extends Group> getGroups()
 	{
 		if (m_groupsLazy)
 		{
-			((BaseSiteService) (SiteService.getInstance())).m_storage.readSiteGroups(
-					this, m_groups);
+			getService().m_storage.readSiteGroups(this, m_groups);
 			m_groupsLazy = false;
 		}
 
@@ -820,13 +825,12 @@ public class BaseSite implements Site
 	/**
 	 * {@inheritDoc}
 	 */
-	public Collection getGroupsWithMember(String userId)
+	public Collection<? extends Group> getGroupsWithMember(String userId)
 	{
-		Collection groups = getGroups();
-		Collection rv = new Vector();
-		for (Iterator i = groups.iterator(); i.hasNext();)
+		Collection<? extends Group> groups = getGroups();
+		Collection<Group> rv = new ArrayList<Group>();
+		for (Group g : groups)
 		{
-			Group g = (Group) i.next();
 			Member m = g.getMember(userId);
 			if ((m != null) && (m.isActive()))
 			{
@@ -840,13 +844,12 @@ public class BaseSite implements Site
 	/**
 	 * {@inheritDoc}
 	 */
-	public Collection getGroupsWithMemberHasRole(String userId, String role)
+	public Collection<? extends Group> getGroupsWithMemberHasRole(String userId, String role)
 	{
-		Collection groups = getGroups();
-		Collection rv = new Vector();
-		for (Iterator i = groups.iterator(); i.hasNext();)
-		{
-			Group g = (Group) i.next();
+	    Collection<? extends Group> groups = getGroups();
+		Collection<Group> rv = new ArrayList<Group>();
+		for (Group g : groups)
+	        {
 			Member m = g.getMember(userId);
 			if ((m != null) && (m.isActive()) && (m.getRole().getId().equals(role)))
 			{
@@ -862,7 +865,7 @@ public class BaseSite implements Site
 	 */
 	public boolean hasGroups()
 	{
-		Collection groups = getGroups();
+		Collection<? extends Group> groups = getGroups();
 		return !groups.isEmpty();
 	}
 
@@ -875,53 +878,47 @@ public class BaseSite implements Site
 		getPages();
 
 		// next, tools from all pages, all at once
-		((BaseSiteService) (SiteService.getInstance())).m_storage.readSiteTools(this);
+		getService().m_storage.readSiteTools(this);
 
 		// get groups, all at once
 		getGroups();
 
 		// now all properties
-		((BaseSiteService) (SiteService.getInstance())).m_storage
-				.readAllSiteProperties(this);
+		getService().m_storage.readAllSiteProperties(this);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public List getOrderedPages()
+	public List<? extends SitePage> getOrderedPages()
 	{
 		// if we are set to use our custom page order, do so
 		if (m_customPageOrdered) return getPages();
 
-		List order = ((BaseSiteService) (SiteService.getInstance()))
-				.serverConfigurationService().getToolOrder(getType());
+		List<String> order = getService().serverConfigurationService().getToolOrder(getType());
 		if (order.isEmpty()) return getPages();
 
-		Map<String, String> pageCategoriesByTool = ((BaseSiteService) (SiteService
-				.getInstance())).serverConfigurationService().getToolToCategoryMap(
+		Map<String, String> pageCategoriesByTool = 
+			getService().serverConfigurationService().getToolToCategoryMap(
 				getType());
 
 		// get a copy we can modify without changing the site!
-		List pages = new Vector(getPages());
+		List<SitePage> pages = new ArrayList<SitePage>(getPages());
 
 		// find any pages that include the tool type for each tool in the
 		// ordering, move them into the newOrder and remove from the old
-		List newOrder = new Vector();
+		List<SitePage> newOrder = new ArrayList<SitePage>();
 
 		// for each entry in the order
-		for (Iterator i = order.iterator(); i.hasNext();)
+		for (String toolId: order)
 		{
-			String toolId = (String) i.next();
-
 			// find any pages that have this tool
-			for (Iterator p = pages.iterator(); p.hasNext();)
+			for (SitePage page: pages)
 			{
-				SitePage page = (SitePage) p.next();
 				page.getProperties().removeProperty(SitePage.PAGE_CATEGORY_PROP);
-				List tools = page.getTools();
-				for (Iterator t = tools.iterator(); t.hasNext();)
+				for (Iterator<? extends ToolConfiguration> p = page.getTools().iterator(); p.hasNext();)
 				{
-					ToolConfiguration tool = (ToolConfiguration) t.next();
+				    ToolConfiguration tool = p.next();
 					if (tool.getToolId().equals(toolId))
 					{
 						// this page has this tool, so move it from the pages to
@@ -950,7 +947,7 @@ public class BaseSite implements Site
 	 */
 	public SitePage getPage(String id)
 	{
-		return (SitePage) ((ResourceVector) getPages()).getById(id);
+		return (SitePage) ((ResourceVector<? extends SitePage>) getPages()).getById(id);
 	}
 
 	/**
@@ -959,9 +956,8 @@ public class BaseSite implements Site
 	public ToolConfiguration getTool(String id)
 	{
 		// search the pages
-		for (Iterator iPages = getPages().iterator(); iPages.hasNext();)
+		for (SitePage page: getPages())
 		{
-			SitePage page = (SitePage) iPages.next();
 			ToolConfiguration tool = page.getTool(id);
 
 			if (tool != null) return tool;
@@ -973,7 +969,7 @@ public class BaseSite implements Site
 	/**
 	 * {@inheritDoc}
 	 */
-	public Collection getTools(String commonToolId)
+	public Collection<ToolConfiguration> getTools(String commonToolId)
 	{
 		String[] toolIds = new String[1];
 		toolIds[0] = commonToolId;
@@ -985,25 +981,24 @@ public class BaseSite implements Site
 	 */
 	public ToolConfiguration getToolForCommonId(String commonToolId)
 	{
-		Collection col = getTools(commonToolId);
+		Collection<ToolConfiguration> col = getTools(commonToolId);
 		if (col == null) return null;
 		if (col.size() == 0) return null;
-		return (ToolConfiguration) col.iterator().next(); // Return first
+		return col.iterator().next(); // Return first
 															// element
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public Collection getTools(String[] toolIds)
+	public Collection<ToolConfiguration> getTools(String[] toolIds)
 	{
-		List rv = new Vector();
+		List<ToolConfiguration> rv = new ArrayList<ToolConfiguration>();
 		if ((toolIds == null) || (toolIds.length == 0)) return rv;
 
 		// search the pages
-		for (Iterator iPages = getPages().iterator(); iPages.hasNext();)
+		for (SitePage page: getPages())
 		{
-			SitePage page = (SitePage) iPages.next();
 			rv.addAll(page.getTools(toolIds));
 		}
 
@@ -1021,19 +1016,19 @@ public class BaseSite implements Site
 		// a group, in this site, and pull the id
 		if (id.startsWith(Entity.SEPARATOR))
 		{
-			Reference ref = ((BaseSiteService) (SiteService.getInstance()))
+			Reference ref = getService()
 					.entityManager().newReference(id);
 			if ((SiteService.APPLICATION_ID.equals(ref.getType()))
 					&& (SiteService.GROUP_SUBTYPE.equals(ref.getSubType()))
 					&& (m_id.equals(ref.getContainer())))
 			{
-				return (Group) ((ResourceVector) getGroups()).getById(ref.getId());
+				return (Group) ((ResourceVector<? extends Group>) getGroups()).getById(ref.getId());
 			}
 
 			return null;
 		}
 
-		return (Group) ((ResourceVector) getGroups()).getById(id);
+		return (Group) ((ResourceVector<? extends Group>) getGroups()).getById(id);
 	}
 
 	/**
@@ -1067,7 +1062,7 @@ public class BaseSite implements Site
 
 		else if (type instanceof Collection)
 		{
-			return ((Collection) type).contains(myType);
+			return ((Collection<?>) type).contains(myType);
 		}
 
 		else if (type instanceof String)
@@ -1187,9 +1182,8 @@ public class BaseSite implements Site
 		Element list = doc.createElement("pages");
 		site.appendChild(list);
 		stack.push(list);
-		for (Iterator iPages = getPages().iterator(); iPages.hasNext();)
+		for (SitePage page: getPages())
 		{
-			BaseSitePage page = (BaseSitePage) iPages.next();
 			page.toXml(doc, stack);
 		}
 		stack.pop();
@@ -1277,8 +1271,8 @@ public class BaseSite implements Site
 	 */
 	public SitePage addPage()
 	{
-		BaseSitePage page = new BaseSitePage(this);
-		getPages().add(page);
+		BaseSitePage page = new BaseSitePage(this, getService());
+		((List<SitePage>)getPages()).add(page);
 
 		return page;
 	}
@@ -1320,7 +1314,7 @@ public class BaseSite implements Site
 		// if lazy, resolve
 		if (((BaseResourceProperties) m_properties).isLazy())
 		{
-			((BaseSiteService) (SiteService.getInstance())).m_storage.readSiteProperties(
+			getService().m_storage.readSiteProperties(
 					this, m_properties);
 			((BaseResourcePropertiesEdit) m_properties).setLazy(false);
 		}
@@ -1391,11 +1385,10 @@ public class BaseSite implements Site
 	public void regenerateIds()
 	{
 		// deep copy the pages
-		ResourceVector newPages = new ResourceVector();
-		for (Iterator iPages = getPages().iterator(); iPages.hasNext();)
+		ResourceVector<BaseSitePage> newPages = new ResourceVector<BaseSitePage>();
+		for (SitePage page: getPages())
 		{
-			BaseSitePage page = (BaseSitePage) iPages.next();
-			newPages.add(new BaseSitePage(page, this, false));
+			newPages.add(new BaseSitePage(page, this, false, getService()));
 		}
 
 		m_pages = newPages;
@@ -1406,7 +1399,7 @@ public class BaseSite implements Site
 	 */
 	public Group addGroup()
 	{
-		Group rv = new BaseGroup(this);
+		BaseGroup rv = new BaseGroup(this, getService());
 		m_groups.add(rv);
 
 		return rv;
@@ -1421,7 +1414,7 @@ public class BaseSite implements Site
 		m_groups.remove(group);
 
 		// track so we can clean up related on commit
-		m_deletedGroups.add(group);
+		m_deletedGroups.add((BaseGroup)group);
 	}
 
 	/**
@@ -1469,8 +1462,7 @@ public class BaseSite implements Site
 					}
 
 					// find the template for the new azg
-					String groupAzgTemplate = ((BaseSiteService) (SiteService
-							.getInstance())).siteAzgTemplate(this);
+					String groupAzgTemplate = getService().siteAzgTemplate(this);
 					AuthzGroup template = null;
 					try
 					{
@@ -1531,7 +1523,7 @@ public class BaseSite implements Site
 		return getAzg().getMember(userId);
 	}
 
-	public Set getMembers()
+	public Set<Member> getMembers()
 	{
 		return getAzg().getMembers();
 	}
@@ -1546,12 +1538,12 @@ public class BaseSite implements Site
 		return getAzg().getRole(id);
 	}
 
-	public Set getRoles()
+	public Set<Role> getRoles()
 	{
 		return getAzg().getRoles();
 	}
 
-	public Set getRolesIsAllowed(String function)
+	public Set<String> getRolesIsAllowed(String function)
 	{
 		return getAzg().getRolesIsAllowed(function);
 	}
@@ -1561,17 +1553,17 @@ public class BaseSite implements Site
 		return getAzg().getUserRole(userId);
 	}
 
-	public Set getUsers()
+	public Set<String> getUsers()
 	{
 		return getAzg().getUsers();
 	}
 
-	public Set getUsersHasRole(String role)
+	public Set<String> getUsersHasRole(String role)
 	{
 		return getAzg().getUsersHasRole(role);
 	}
 
-	public Set getUsersIsAllowed(String function)
+	public Set<String> getUsersIsAllowed(String function)
 	{
 		return getAzg().getUsersIsAllowed(function);
 	}

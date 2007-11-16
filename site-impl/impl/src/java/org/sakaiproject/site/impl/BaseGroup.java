@@ -37,7 +37,6 @@ import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.id.cover.IdManager;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.cover.SiteService;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.util.BaseResourceProperties;
@@ -79,22 +78,30 @@ public class BaseGroup implements Group, Identifiable
 	/** Set to true if we have changed our azg, so it need to be written back on save. */
 	protected boolean m_azgChanged = false;
 
+	// Reference to our service
+	private BaseSiteService m_service;
+	
+	protected BaseSiteService getService() {
+	  return m_service;
+	}
+	
 	/**
 	 * Construct. Auto-generate the id.
 	 * 
 	 * @param site
 	 *        The site in which this page lives.
 	 */
-	protected BaseGroup(Site site)
+	protected BaseGroup(Site site, BaseSiteService service)
 	{
 		if (site == null) M_log.warn("BaseGroup(site) created with null site");
 
 		m_site = site;
+		m_service = service;
 		m_id = IdManager.createUuid();
 		m_properties = new BaseResourcePropertiesEdit();
 	}
 
-	protected BaseGroup(String id, String title, String description, Site site)
+	protected BaseGroup(String id, String title, String description, Site site, BaseSiteService service)
 	{
 		if (site == null) M_log.warn("BaseGroup(..., site) created with null site");
 
@@ -102,6 +109,7 @@ public class BaseGroup implements Group, Identifiable
 		m_title = title;
 		m_description = description;
 		m_site = site;
+		m_service = service;
 		m_properties = new BaseResourcePropertiesEdit();
 	}
 
@@ -115,13 +123,14 @@ public class BaseGroup implements Group, Identifiable
 	 * @param exact
 	 *        If true, we copy id - else we generate a new one.
 	 */
-	protected BaseGroup(Group other, Site site, boolean exact)
+	protected BaseGroup(Group other, Site site, boolean exact, BaseSiteService service)
 	{
 		if (site == null) M_log.warn("BaseGroup(other, site...) created with null site");
 
 		BaseGroup bOther = (BaseGroup) other;
 
-		m_site = (Site) site;
+		m_site = site;
+		m_service = service;
 
 		if (exact)
 		{
@@ -193,7 +202,7 @@ public class BaseGroup implements Group, Identifiable
 	 */
 	public String getReference()
 	{
-		return ((BaseSiteService) (SiteService.getInstance())).siteGroupReference(m_site.getId(), getId());
+		return getService().siteGroupReference(m_site.getId(), getId());
 	}
 
 	/**
@@ -331,7 +340,7 @@ public class BaseGroup implements Group, Identifiable
 					// use a template, but assign no user any maintain role
 
 					// find the template for the new azg
-					String groupAzgTemplate = ((BaseSiteService) (SiteService.getInstance())).groupAzgTemplate(m_site);
+					String groupAzgTemplate = getService().groupAzgTemplate(m_site);
 					AuthzGroup template = null;
 					try
 					{
@@ -400,7 +409,7 @@ public class BaseGroup implements Group, Identifiable
 		return getAzg().getMember(userId);
 	}
 
-	public Set getMembers()
+	public Set<Member> getMembers()
 	{
 		return getAzg().getMembers();
 	}
@@ -425,12 +434,12 @@ public class BaseGroup implements Group, Identifiable
 		return getAzg().getRole(id);
 	}
 
-	public Set getRoles()
+	public Set<Role> getRoles()
 	{
 		return getAzg().getRoles();
 	}
 
-	public Set getRolesIsAllowed(String function)
+	public Set<String> getRolesIsAllowed(String function)
 	{
 		return getAzg().getRolesIsAllowed(function);
 	}
@@ -440,17 +449,17 @@ public class BaseGroup implements Group, Identifiable
 		return getAzg().getUserRole(userId);
 	}
 
-	public Set getUsers()
+	public Set<String> getUsers()
 	{
 		return getAzg().getUsers();
 	}
 
-	public Set getUsersHasRole(String role)
+	public Set<String> getUsersHasRole(String role)
 	{
 		return getAzg().getUsersHasRole(role);
 	}
 
-	public Set getUsersIsAllowed(String function)
+	public Set<String> getUsersIsAllowed(String function)
 	{
 		return getAzg().getUsersIsAllowed(function);
 	}

@@ -21,12 +21,10 @@
 
 package org.sakaiproject.site.impl;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -36,9 +34,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
-import org.sakaiproject.db.api.SqlServiceDeadlockException;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
-import org.sakaiproject.exception.IdUsedException;
 import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
@@ -122,7 +118,7 @@ public abstract class DbSiteService extends BaseSiteService
 	/** The database handler we are using. */
 	protected SiteServiceSql siteServiceSql;
 
-	public void setDatabaseBeans(Map databaseBeans)
+	public void setDatabaseBeans(Map<String, SiteServiceSql> databaseBeans)
 	{
 		this.databaseBeans = databaseBeans;
 	}
@@ -232,7 +228,7 @@ public abstract class DbSiteService extends BaseSiteService
 			return (Site) super.getResource(id);
 		}
 
-		public List getAll()
+		public List<Site> getAll()
 		{
 			return super.getAllResources();
 		}
@@ -300,10 +296,8 @@ public abstract class DbSiteService extends BaseSiteService
 
 			// add each page
 			int pageOrder = 1;
-			for (Iterator iPages = edit.getPages().iterator(); iPages.hasNext();)
+			for (SitePage page: edit.getPages())
 			{
-				SitePage page = (SitePage) iPages.next();
-
 				// write the page
 				statement = siteServiceSql.getInsertPageSql();
 
@@ -322,9 +316,8 @@ public abstract class DbSiteService extends BaseSiteService
 
 				// write the tools
 				int toolOrder = 1;
-				for (Iterator iTools = page.getTools().iterator(); iTools.hasNext();)
+				for (ToolConfiguration tool: page.getTools())
 				{
-					ToolConfiguration tool = (ToolConfiguration) iTools.next();
 
 					// write the tool
 					statement = siteServiceSql.getInsertToolSql();
@@ -346,9 +339,8 @@ public abstract class DbSiteService extends BaseSiteService
 			}
 
 			// add each group
-			for (Iterator iGroups = edit.getGroups().iterator(); iGroups.hasNext();)
+			for (Group group: edit.getGroups())
 			{
-				Group group = (Group) iGroups.next();
 
 				// write the group
 				statement = siteServiceSql.getInsertGroupSql();
@@ -492,7 +484,7 @@ public abstract class DbSiteService extends BaseSiteService
 		/**
 		 * {@inheritDoc}
 		 */
-		public List getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort, PagingPosition page)
+		public List<Site> getSites(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria, SortType sort, PagingPosition page)
 		{
 			// Note: super users are not treated any differently - they get only those sites they have permission for,
 			// not based on super user status
@@ -529,11 +521,11 @@ public abstract class DbSiteService extends BaseSiteService
 					}
 					else if (ofType instanceof List)
 					{
-						size = ((List) ofType).size();
+						size = ((List<?>) ofType).size();
 					}
 					else if (ofType instanceof Set)
 					{
-						size = ((Set) ofType).size();
+						size = ((Set<?>) ofType).size();
 					}
 					if (size > 0)
 					{
@@ -684,11 +676,11 @@ public abstract class DbSiteService extends BaseSiteService
 				}
 				else if (ofType instanceof List)
 				{
-					fieldCount += ((List) ofType).size();
+					fieldCount += ((List<?>) ofType).size();
 				}
 				else if (ofType instanceof Set)
 				{
-					fieldCount += ((Set) ofType).size();
+					fieldCount += ((Set<?>) ofType).size();
 				}
 			}
 			if (criteria != null) fieldCount += 1;
@@ -715,23 +707,15 @@ public abstract class DbSiteService extends BaseSiteService
 						for (int i = 0; i < ((String[]) ofType).length; i++)
 						{
 							// of type String[]
-							fields[pos++] = (String) ((String[]) ofType)[i];
+							fields[pos++] = ((String[]) ofType)[i];
 						}
 					}
-					else if (ofType instanceof List)
+					else if (ofType instanceof Collection)
 					{
-						for (Iterator l = ((List) ofType).iterator(); l.hasNext();)
+						for (Object obj: ((Collection<?>) ofType))
 						{
 							// of type List
-							fields[pos++] = l.next();
-						}
-					}
-					else if (ofType instanceof Set)
-					{
-						for (Iterator l = ((Set) ofType).iterator(); l.hasNext();)
-						{
-							// of type Set
-							fields[pos++] = l.next();
+							fields[pos++] = obj;
 						}
 					}
 				}
@@ -742,11 +726,9 @@ public abstract class DbSiteService extends BaseSiteService
 				}
 				if ((propertyCriteria != null) && (propertyCriteria.size() > 0))
 				{
-					for (Iterator i = propertyCriteria.entrySet().iterator(); i.hasNext();)
+					for (String name: propertyCriteria.keySet())
 					{
-						Map.Entry entry = (Map.Entry) i.next();
-						String name = (String) entry.getKey();
-						String value = (String) entry.getValue();
+						String value = propertyCriteria.get(name);
 						fields[pos++] = name;
 						fields[pos++] = "%" + value + "%";
 					}
@@ -757,7 +739,7 @@ public abstract class DbSiteService extends BaseSiteService
 				}
 			}
 
-			List rv = null;
+			List<Site> rv;
 
 			// where has a trailing 'and ' to remove
 			if ((where.length() > 5) && (where.substring(where.length() - 5).equals(" and ")))
@@ -783,11 +765,11 @@ public abstract class DbSiteService extends BaseSiteService
 		/**
 		 * {@inheritDoc}
 		 */
-		public List getSiteTypes()
+		public List<String> getSiteTypes()
 		{
 			String statement = siteServiceSql.getTypesSql();
 
-			List rv = sqlService().dbRead(statement);
+			List<String> rv = sqlService().dbRead(statement);
 
 			return rv;
 		}
@@ -804,7 +786,7 @@ public abstract class DbSiteService extends BaseSiteService
 			Object fields[] = new Object[1];
 			fields[0] = caseId(siteId);
 
-			List rv = sqlService().dbRead(statement, fields, new SqlReader()
+			List<String> rv = sqlService().dbRead(statement, fields, new SqlReader()
 			{
 				public Object readSqlResultRecord(ResultSet result)
 				{
@@ -828,7 +810,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 			if ((rv != null) && (rv.size() > 0))
 			{
-				return (String) rv.get(0);
+				return rv.get(0);
 			}
 
 			return m_service.adjustSkin(null, true);
@@ -837,7 +819,7 @@ public abstract class DbSiteService extends BaseSiteService
 		/**
 		 * {@inheritDoc}
 		 */
-		public int countSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria)
+		public int countSites(SelectionType type, Object ofType, String criteria, Map<String, String> propertyCriteria)
 		{
 			// if we are joining, start our where with the join clauses
 			StringBuilder where = new StringBuilder();
@@ -862,7 +844,7 @@ public abstract class DbSiteService extends BaseSiteService
 					// type criteria is a simple String value
 					where.append(siteServiceSql.getSitesWhere5Sql());
 				}
-				else if (ofType instanceof String[] || ofType instanceof List || ofType instanceof Set)
+				else if (ofType instanceof String[] || ofType instanceof Collection)
 				{
 					// more complex type criteria
 					int size = 0;
@@ -870,13 +852,9 @@ public abstract class DbSiteService extends BaseSiteService
 					{
 						size = ((String[]) ofType).length;
 					}
-					else if (ofType instanceof List)
+					else if (ofType instanceof Collection)
 					{
-						size = ((List) ofType).size();
-					}
-					else if (ofType instanceof Set)
-					{
-						size = ((Set) ofType).size();
+						size = ((Collection<?>) ofType).size();
 					}
 					if (size > 0)
 					{
@@ -933,13 +911,9 @@ public abstract class DbSiteService extends BaseSiteService
 				{
 					fieldCount += ((String[]) ofType).length;
 				}
-				else if (ofType instanceof List)
+				else if (ofType instanceof Collection)
 				{
-					fieldCount += ((List) ofType).size();
-				}
-				else if (ofType instanceof Set)
-				{
-					fieldCount += ((Set) ofType).size();
+					fieldCount += ((Collection<?>) ofType).size();
 				}
 			}
 			if (criteria != null) fieldCount += 1;
@@ -966,23 +940,14 @@ public abstract class DbSiteService extends BaseSiteService
 						for (int i = 0; i < ((String[]) ofType).length; i++)
 						{
 							// of type String[]
-							fields[pos++] = (String) ((String[]) ofType)[i];
+							fields[pos++] = ((String[]) ofType)[i];
 						}
 					}
-					else if (ofType instanceof List)
+					else if (ofType instanceof Collection)
 					{
-						for (Iterator l = ((List) ofType).iterator(); l.hasNext();)
+						for (Object obj: (Collection<?>) ofType)
 						{
-							// of type List
-							fields[pos++] = l.next();
-						}
-					}
-					else if (ofType instanceof Set)
-					{
-						for (Iterator l = ((Set) ofType).iterator(); l.hasNext();)
-						{
-							// of type Set
-							fields[pos++] = l.next();
+							fields[pos++] = obj;
 						}
 					}
 				}
@@ -993,11 +958,9 @@ public abstract class DbSiteService extends BaseSiteService
 				}
 				if ((propertyCriteria != null) && (propertyCriteria.size() > 0))
 				{
-					for (Iterator i = propertyCriteria.entrySet().iterator(); i.hasNext();)
+					for (String name: propertyCriteria.keySet())
 					{
-						Map.Entry entry = (Map.Entry) i.next();
-						String name = (String) entry.getKey();
-						String value = (String) entry.getValue();
+						String value = propertyCriteria.get(name);
 						fields[pos++] = name;
 						fields[pos++] = "%" + value + "%";
 					}
@@ -1033,7 +996,7 @@ public abstract class DbSiteService extends BaseSiteService
 			Object fields[] = new Object[1];
 			fields[0] = id;
 
-			List found = m_sql.dbRead(sql, fields, new SqlReader()
+			List<BaseToolConfiguration> found = m_sql.dbRead(sql, fields, new SqlReader()
 			{
 				public Object readSqlResultRecord(ResultSet result)
 				{
@@ -1053,7 +1016,7 @@ public abstract class DbSiteService extends BaseSiteService
 						skin = m_service.adjustSkin(skin, (published == 1));
 
 						// make the tool
-						BaseToolConfiguration tool = new BaseToolConfiguration(id, registration, title, layout, pageId, siteId, skin, pageOrder);
+						BaseToolConfiguration tool = new BaseToolConfiguration(id, registration, title, layout, pageId, siteId, skin, pageOrder, DbSiteService.this);
 
 						return tool;
 					}
@@ -1073,7 +1036,7 @@ public abstract class DbSiteService extends BaseSiteService
 			ToolConfiguration rv = null;
 			if (found.size() > 0)
 			{
-				rv = (ToolConfiguration) found.get(0);
+				rv = found.get(0);
 			}
 
 			return rv;
@@ -1089,7 +1052,7 @@ public abstract class DbSiteService extends BaseSiteService
 			Object fields[] = new Object[1];
 			fields[0] = id;
 
-			List found = m_sql.dbRead(sql, fields, new SqlReader()
+			List<BaseSitePage> found = m_sql.dbRead(sql, fields, new SqlReader()
 			{
 				public Object readSqlResultRecord(ResultSet result)
 				{
@@ -1108,7 +1071,7 @@ public abstract class DbSiteService extends BaseSiteService
 						skin = m_service.adjustSkin(skin, (published == 1));
 
 						// make the page
-						BaseSitePage page = new BaseSitePage(pageId, title, layout, popup, siteId, skin);
+						BaseSitePage page = new BaseSitePage(pageId, title, layout, popup, siteId, skin, DbSiteService.this);
 
 						return page;
 					}
@@ -1128,7 +1091,7 @@ public abstract class DbSiteService extends BaseSiteService
 			SitePage rv = null;
 			if (found.size() > 0)
 			{
-				rv = (SitePage) found.get(0);
+				rv = found.get(0);
 			}
 
 			return rv;
@@ -1147,7 +1110,7 @@ public abstract class DbSiteService extends BaseSiteService
 			Object fields[] = new Object[1];
 			fields[0] = id;
 
-			List found = m_sql.dbRead(sql, fields, null);
+			List<String> found = m_sql.dbRead(sql, fields, null);
 
 			if (found.size() > 1)
 			{
@@ -1157,7 +1120,7 @@ public abstract class DbSiteService extends BaseSiteService
 			String rv = null;
 			if (found.size() > 0)
 			{
-				rv = (String) found.get(0);
+				rv = found.get(0);
 			}
 
 			return rv;
@@ -1172,7 +1135,7 @@ public abstract class DbSiteService extends BaseSiteService
 			Object fields[] = new Object[1];
 			fields[0] = id;
 
-			List found = m_sql.dbRead(sql, fields, null);
+			List<String> found = m_sql.dbRead(sql, fields, null);
 
 			if (found.size() > 1)
 			{
@@ -1182,7 +1145,7 @@ public abstract class DbSiteService extends BaseSiteService
 			String rv = null;
 			if (found.size() > 0)
 			{
-				rv = (String) found.get(0);
+				rv = found.get(0);
 			}
 
 			return rv;
@@ -1230,22 +1193,22 @@ public abstract class DbSiteService extends BaseSiteService
 		 * @param visitUsers
 		 *        The set of String User Ids who have visit access.
 		 */
-		public void setSiteSecurity(final String siteId, Set updateUsers, Set visitUnpUsers, Set visitUsers)
+		public void setSiteSecurity(final String siteId, Set<String> updateUsers, Set<String> visitUnpUsers, Set<String> visitUsers)
 		{
 			// normalize the input parameters - remove any user in more than one set
 
 			// adjust visitUsers to remove any that are in visitUnpUsers or updateUsers
-			Set targetVisit = new HashSet();
+			Set<String> targetVisit = new HashSet<String>();
 			targetVisit.addAll(visitUsers);
 			targetVisit.removeAll(visitUnpUsers);
 			targetVisit.removeAll(updateUsers);
 
 			// adjust visitUnpUsers to remove any that are in updateUsers
-			Set targetUnp = new HashSet();
+			Set<String> targetUnp = new HashSet<String>();
 			targetUnp.addAll(visitUnpUsers);
 			targetUnp.removeAll(updateUsers);
 
-			Set targetUpdate = updateUsers;
+			Set<String> targetUpdate = updateUsers;
 
 			// read existing
 			String statement = siteServiceSql.getUserIdSql();
@@ -1253,9 +1216,9 @@ public abstract class DbSiteService extends BaseSiteService
 			fields[0] = caseId(siteId);
 
 			// collect the current data in three sets, update, unp, visit
-			final Set existingUpdate = new HashSet();
-			final Set existingUnp = new HashSet();
-			final Set existingVisit = new HashSet();
+			final Set<String> existingUpdate = new HashSet<String>();
+			final Set<String> existingUnp = new HashSet<String>();
+			final Set<String> existingVisit = new HashSet<String>();
 
 			m_sql.dbRead(statement, fields, new SqlReader()
 			{
@@ -1293,24 +1256,24 @@ public abstract class DbSiteService extends BaseSiteService
 			// compute the delete and insert sets for each of the three permissions
 
 			// delete if the user is in targetUpdate, but it is already in one of the other categories
-			Set updDeletes = new HashSet();
+			Set<String> updDeletes = new HashSet<String>();
 			updDeletes.addAll(existingUnp);
 			updDeletes.addAll(existingVisit);
 			updDeletes.retainAll(targetUpdate);
 
 			// also delete if the user is in the existing and not in the target
-			Set obsolete = new HashSet();
+			Set<String> obsolete = new HashSet<String>();
 			obsolete.addAll(existingUpdate);
 			obsolete.removeAll(targetUpdate);
 			updDeletes.addAll(obsolete);
 
 			// insert if the user is in targetUpdate, but is not already in update
-			Set updInserts = new HashSet();
+			Set<String> updInserts = new HashSet<String>();
 			updInserts.addAll(targetUpdate);
 			updInserts.removeAll(existingUpdate);
 
 			// delete if the user is in targetUnp, but it is already in one of the other categories
-			Set unpDeletes = new HashSet();
+			Set<String> unpDeletes = new HashSet<String>();
 			unpDeletes.addAll(existingUpdate);
 			unpDeletes.addAll(existingVisit);
 			unpDeletes.retainAll(targetUnp);
@@ -1322,12 +1285,12 @@ public abstract class DbSiteService extends BaseSiteService
 			unpDeletes.addAll(obsolete);
 
 			// insert if the user is in targetUnp, but is not already in unp
-			Set unpInserts = new HashSet();
+			Set<String> unpInserts = new HashSet<String>();
 			unpInserts.addAll(targetUnp);
 			unpInserts.removeAll(existingUnp);
 
 			// delete if the user is in targetVisit, but it is already in one of the other categories
-			Set visitDeletes = new HashSet();
+			Set<String> visitDeletes = new HashSet<String>();
 			visitDeletes.addAll(existingUpdate);
 			visitDeletes.addAll(existingUnp);
 			visitDeletes.retainAll(targetVisit);
@@ -1339,7 +1302,7 @@ public abstract class DbSiteService extends BaseSiteService
 			visitDeletes.addAll(obsolete);
 
 			// insert if the user is in targetVisit, but is not already in visit
-			Set visitInserts = new HashSet();
+			Set<String> visitInserts = new HashSet<String>();
 			visitInserts.addAll(targetVisit);
 			visitInserts.removeAll(existingVisit);
 
@@ -1354,21 +1317,18 @@ public abstract class DbSiteService extends BaseSiteService
 
 				// delete
 				statement = siteServiceSql.getDeleteUserSql();
-				for (Iterator i = updDeletes.iterator(); i.hasNext();)
+				for (String userId: updDeletes)
 				{
-					String userId = (String) i.next();
 					fields[1] = userId;
 					m_sql.dbWrite(statement, fields);
 				}
-				for (Iterator i = unpDeletes.iterator(); i.hasNext();)
+				for (String userId: unpDeletes)
 				{
-					String userId = (String) i.next();
 					fields[1] = userId;
 					m_sql.dbWrite(statement, fields);
 				}
-				for (Iterator i = visitDeletes.iterator(); i.hasNext();)
+				for (String userId: visitDeletes)
 				{
-					String userId = (String) i.next();
 					fields[1] = userId;
 					m_sql.dbWrite(statement, fields);
 				}
@@ -1379,25 +1339,22 @@ public abstract class DbSiteService extends BaseSiteService
 				fields[0] = caseId(siteId);
 
 				fields[2] = new Integer(-1);
-				for (Iterator i = updInserts.iterator(); i.hasNext();)
+				for (String userId: updInserts)
 				{
-					String userId = (String) i.next();
 					fields[1] = userId;
 					m_sql.dbWrite(statement, fields);
 				}
 
 				fields[2] = new Integer(0);
-				for (Iterator i = unpInserts.iterator(); i.hasNext();)
+				for (String userId: unpInserts)
 				{
-					String userId = (String) i.next();
 					fields[1] = userId;
 					m_sql.dbWrite(statement, fields);
 				}
 
 				fields[2] = new Integer(1);
-				for (Iterator i = visitInserts.iterator(); i.hasNext();)
+				for (String userId: visitInserts)
 				{
-					String userId = (String) i.next();
 					fields[1] = userId;
 					m_sql.dbWrite(statement, fields);
 				}
@@ -1407,22 +1364,22 @@ public abstract class DbSiteService extends BaseSiteService
 		/**
 		 * {@inheritDoc}
 		 */
-		public void setUserSecurity(final String userId, Set updateSites, Set visitUnpSites, Set visitSites)
+		public void setUserSecurity(final String userId, Set<String> updateSites, Set<String> visitUnpSites, Set<String> visitSites)
 		{
 			// normalize the input parameters - remove any user in more than one set
 
 			// adjust visitSites to remove any that are in visitUnpSites or updateSites
-			Set targetVisit = new HashSet();
+			Set<String> targetVisit = new HashSet<String>();
 			targetVisit.addAll(visitSites);
 			targetVisit.removeAll(visitUnpSites);
 			targetVisit.removeAll(updateSites);
 
 			// adjust visitUnpSites to remove any that are in updateSites
-			Set targetUnp = new HashSet();
+			Set<String> targetUnp = new HashSet<String>();
 			targetUnp.addAll(visitUnpSites);
 			targetUnp.removeAll(updateSites);
 
-			Set targetUpdate = updateSites;
+			Set<String> targetUpdate = updateSites;
 
 			// read existing
 			String statement = siteServiceSql.getSiteId4Sql();
@@ -1430,9 +1387,9 @@ public abstract class DbSiteService extends BaseSiteService
 			fields[0] = userId;
 
 			// collect the current data in three sets, update, unp, visit
-			final Set existingUpdate = new HashSet();
-			final Set existingUnp = new HashSet();
-			final Set existingVisit = new HashSet();
+			final Set<String> existingUpdate = new HashSet<String>();
+			final Set<String> existingUnp = new HashSet<String>();
+			final Set<String> existingVisit = new HashSet<String>();
 
 			m_sql.dbRead(statement, fields, new SqlReader()
 			{
@@ -1470,24 +1427,24 @@ public abstract class DbSiteService extends BaseSiteService
 			// compute the delete and insert sets for each of the three permissions
 
 			// delete if the site is in targetUpdate, but it is already in one of the other categories
-			Set updDeletes = new HashSet();
+			Set<String> updDeletes = new HashSet<String>();
 			updDeletes.addAll(existingUnp);
 			updDeletes.addAll(existingVisit);
 			updDeletes.retainAll(targetUpdate);
 
 			// also delete if the user is in the existing and not in the target
-			Set obsolete = new HashSet();
+			Set<String> obsolete = new HashSet<String>();
 			obsolete.addAll(existingUpdate);
 			obsolete.removeAll(targetUpdate);
 			updDeletes.addAll(obsolete);
 
 			// insert if the site is in targetUpdate, but is not already in update
-			Set updInserts = new HashSet();
+			Set<String> updInserts = new HashSet<String>();
 			updInserts.addAll(targetUpdate);
 			updInserts.removeAll(existingUpdate);
 
 			// delete if the site is in targetUnp, but it is already in one of the other categories
-			Set unpDeletes = new HashSet();
+			Set<String> unpDeletes = new HashSet<String>();
 			unpDeletes.addAll(existingUpdate);
 			unpDeletes.addAll(existingVisit);
 			unpDeletes.retainAll(targetUnp);
@@ -1499,12 +1456,12 @@ public abstract class DbSiteService extends BaseSiteService
 			unpDeletes.addAll(obsolete);
 
 			// insert if the site is in targetUnp, but is not already in unp
-			Set unpInserts = new HashSet();
+			Set<String> unpInserts = new HashSet<String>();
 			unpInserts.addAll(targetUnp);
 			unpInserts.removeAll(existingUnp);
 
 			// delete if the site is in targetVisit, but it is already in one of the other categories
-			Set visitDeletes = new HashSet();
+			Set<String> visitDeletes = new HashSet<String>();
 			visitDeletes.addAll(existingUpdate);
 			visitDeletes.addAll(existingUnp);
 			visitDeletes.retainAll(targetVisit);
@@ -1516,7 +1473,7 @@ public abstract class DbSiteService extends BaseSiteService
 			visitDeletes.addAll(obsolete);
 
 			// insert if the site is in targetVisit, but is not already in visit
-			Set visitInserts = new HashSet();
+			Set<String> visitInserts = new HashSet<String>();
 			visitInserts.addAll(targetVisit);
 			visitInserts.removeAll(existingVisit);
 
@@ -1531,21 +1488,18 @@ public abstract class DbSiteService extends BaseSiteService
 
 				// delete
 				statement = siteServiceSql.getDeleteUserSql();
-				for (Iterator i = updDeletes.iterator(); i.hasNext();)
+				for (String siteId: updDeletes)
 				{
-					String siteId = (String) i.next();
 					fields[0] = caseId(siteId);
 					m_sql.dbWrite(statement, fields);
 				}
-				for (Iterator i = unpDeletes.iterator(); i.hasNext();)
+				for (String siteId: unpDeletes)
 				{
-					String siteId = (String) i.next();
 					fields[0] = caseId(siteId);
 					m_sql.dbWrite(statement, fields);
 				}
-				for (Iterator i = visitDeletes.iterator(); i.hasNext();)
+				for (String siteId: visitDeletes)
 				{
-					String siteId = (String) i.next();
 					fields[0] = caseId(siteId);
 					m_sql.dbWrite(statement, fields);
 				}
@@ -1556,25 +1510,22 @@ public abstract class DbSiteService extends BaseSiteService
 				fields[1] = userId;
 
 				fields[2] = new Integer(-1);
-				for (Iterator i = updInserts.iterator(); i.hasNext();)
+				for (String siteId: updInserts)
 				{
-					String siteId = (String) i.next();
 					fields[0] = caseId(siteId);
 					m_sql.dbWrite(statement, fields);
 				}
 
 				fields[2] = new Integer(0);
-				for (Iterator i = unpInserts.iterator(); i.hasNext();)
+				for (String siteId: unpInserts)
 				{
-					String siteId = (String) i.next();
 					fields[0] = caseId(siteId);
 					m_sql.dbWrite(statement, fields);
 				}
 
 				fields[2] = new Integer(1);
-				for (Iterator i = visitInserts.iterator(); i.hasNext();)
+				for (String siteId: visitInserts)
 				{
-					String siteId = (String) i.next();
 					fields[0] = caseId(siteId);
 					m_sql.dbWrite(statement, fields);
 				}
@@ -1606,30 +1557,26 @@ public abstract class DbSiteService extends BaseSiteService
 
 			// read and unlazy the page properties for the entire site
 			readSitePageProperties((BaseSite) site);
-			for (Iterator i = site.getPages().iterator(); i.hasNext();)
+			for (SitePage page: site.getPages())
 			{
-				BaseSitePage page = (BaseSitePage) i.next();
-				((BaseResourcePropertiesEdit) page.m_properties).setLazy(false);
+				((BaseResourcePropertiesEdit) ((BaseSitePage)page).m_properties).setLazy(false);
 			}
 
 			// read and unlazy the tool properties for the entire site
 			readSiteToolProperties((BaseSite) site);
-			for (Iterator i = site.getPages().iterator(); i.hasNext();)
+            for (SitePage page: site.getPages())
 			{
-				BaseSitePage page = (BaseSitePage) i.next();
-				for (Iterator t = page.getTools().iterator(); t.hasNext();)
+				for (ToolConfiguration tool: page.getTools())
 				{
-					BaseToolConfiguration tool = (BaseToolConfiguration) t.next();
-					tool.m_configLazy = false;
+					((BaseToolConfiguration)tool).m_configLazy = false;
 				}
 			}
 
 			// read and unlazy the group properties for the entire site
 			readSiteGroupProperties((BaseSite) site);
-			for (Iterator i = site.getGroups().iterator(); i.hasNext();)
+			for (Group group: site.getGroups())
 			{
-				BaseGroup group = (BaseGroup) i.next();
-				((BaseResourcePropertiesEdit) group.m_properties).setLazy(false);
+				((BaseResourcePropertiesEdit) ((BaseGroup)group).m_properties).setLazy(false);
 			}
 		}
 
@@ -1801,14 +1748,14 @@ public abstract class DbSiteService extends BaseSiteService
 		 * @param site
 		 *        The site for which pages are desired.
 		 */
-		public void readSitePages(final Site site, final ResourceVector pages)
+		public void readSitePages(final Site site, final ResourceVector<BaseSitePage> pages)
 		{
 			// read all resources from the db with a where
 			String sql = siteServiceSql.getPageFields2Sql();
 			Object fields[] = new Object[1];
 			fields[0] = site.getId();
 
-			List all = m_sql.dbRead(sql, fields, new SqlReader()
+			m_sql.dbRead(sql, fields, new SqlReader()
 			{
 				public Object readSqlResultRecord(ResultSet result)
 				{
@@ -1821,7 +1768,7 @@ public abstract class DbSiteService extends BaseSiteService
 						boolean popup = "1".equals(result.getString(4)) ? true : false;
 
 						// make the page
-						BaseSitePage page = new BaseSitePage(site, id, title, layout, popup);
+						BaseSitePage page = new BaseSitePage(site, id, title, layout, popup, DbSiteService.this);
 
 						// add it to the pages
 						pages.add(page);
@@ -1842,14 +1789,14 @@ public abstract class DbSiteService extends BaseSiteService
 		 * @param page
 		 *        The page for which tools are desired.
 		 */
-		public void readPageTools(final SitePage page, final ResourceVector tools)
+		public void readPageTools(final SitePage page, final ResourceVector<BaseToolConfiguration> tools)
 		{
 			// read all resources from the db with a where
 			String sql = siteServiceSql.getToolFields2Sql();
 			Object fields[] = new Object[1];
 			fields[0] = page.getId();
 
-			List all = m_sql.dbRead(sql, fields, new SqlReader()
+			m_sql.dbRead(sql, fields, new SqlReader()
 			{
 				public Object readSqlResultRecord(ResultSet result)
 				{
@@ -1863,7 +1810,7 @@ public abstract class DbSiteService extends BaseSiteService
 						int pageOrder = result.getInt(5);
 
 						// make the tool
-						BaseToolConfiguration tool = new BaseToolConfiguration(page, id, registration, title, layout, pageOrder);
+						BaseToolConfiguration tool = new BaseToolConfiguration(page, id, registration, title, layout, pageOrder, DbSiteService.this);
 
 						// add it to the tools
 						tools.add(tool);
@@ -1891,7 +1838,7 @@ public abstract class DbSiteService extends BaseSiteService
 			Object fields[] = new Object[1];
 			fields[0] = site.getId();
 
-			List all = m_sql.dbRead(sql, fields, new SqlReader()
+			m_sql.dbRead(sql, fields, new SqlReader()
 			{
 				public Object readSqlResultRecord(ResultSet result)
 				{
@@ -1910,7 +1857,8 @@ public abstract class DbSiteService extends BaseSiteService
 						if ((page != null) && (page.m_toolsLazy))
 						{
 							// make the tool
-							BaseToolConfiguration tool = new BaseToolConfiguration(page, id, registration, title, layout, pageOrder);
+							BaseToolConfiguration tool 
+							  = new BaseToolConfiguration(page, id, registration, title, layout, pageOrder, DbSiteService.this);
 
 							// add it to the tools
 							page.m_tools.add(tool);
@@ -1926,17 +1874,16 @@ public abstract class DbSiteService extends BaseSiteService
 			});
 
 			// unlazy the page tools
-			for (Iterator i = site.getPages().iterator(); i.hasNext();)
+			for (SitePage page: site.getPages())
 			{
-				BaseSitePage page = (BaseSitePage) i.next();
-				page.m_toolsLazy = false;
+				((BaseSitePage)page).m_toolsLazy = false;
 			}
 		}
 
 		/**
 		 * @inheritDoc
 		 */
-		public void readSiteGroups(final Site site, final Collection groups)
+		public void readSiteGroups(final Site site, final Collection<BaseGroup> groups)
 		{
 			String sql = siteServiceSql.getGroupFieldsSql();
 			// TODO: order by? title? -ggolden
@@ -1944,7 +1891,7 @@ public abstract class DbSiteService extends BaseSiteService
 			Object fields[] = new Object[1];
 			fields[0] = site.getId();
 
-			List all = m_sql.dbRead(sql, fields, new SqlReader()
+			m_sql.dbRead(sql, fields, new SqlReader()
 			{
 				public Object readSqlResultRecord(ResultSet result)
 				{
@@ -1956,7 +1903,7 @@ public abstract class DbSiteService extends BaseSiteService
 						String description = result.getString(3);
 
 						// make the group
-						BaseGroup group = new BaseGroup(groupId, title, description, site);
+						BaseGroup group = new BaseGroup(groupId, title, description, site, DbSiteService.this);
 
 						// add it to the groups
 						groups.add(group);
@@ -2089,7 +2036,7 @@ public abstract class DbSiteService extends BaseSiteService
 
 				// create the Resource from these fields
 				return new BaseSite(id, title, type, shortDesc, description, icon, info, skin, published, joinable, pubView, joinRole, isSpecial,
-						isUser, createdBy, createdOn, modifiedBy, modifiedOn, customPageOrdered);
+						isUser, createdBy, createdOn, modifiedBy, modifiedOn, customPageOrdered, DbSiteService.this);
 			}
 			catch (SQLException e)
 			{
