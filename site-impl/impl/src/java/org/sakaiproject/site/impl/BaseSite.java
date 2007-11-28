@@ -480,6 +480,8 @@ public class BaseSite implements Site
 
 		// set up the groups collection
 		m_groups = new ResourceVector<BaseGroup>();
+		
+		m_service = service;
 
 		m_id = id;
 		m_title = title;
