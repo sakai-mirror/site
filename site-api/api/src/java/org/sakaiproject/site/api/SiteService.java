@@ -76,6 +76,9 @@ public interface SiteService extends EntityProducer
 
 	/** Name for the event of removing a site. */
 	static final String SECURE_REMOVE_SITE = "site.del";
+	
+	/** Name for the event of accessing role swap functionality. */
+	static final String SITE_ROLE_SWAP = "site.roleswap";
 
 	/** Name for the event of updating a site. */
 	static final String SECURE_UPDATE_SITE = "site.upd";
@@ -728,4 +731,13 @@ public interface SiteService extends EntityProducer
 	 * @return An unmodifiable List containing the currently registered SiteAdvisors
 	 */
 	public List<SiteAdvisor> getSiteAdvisors();
+	
+	/**
+	 * check permissions for role swapping capabilites
+	 * 
+	 * @param id
+	 *        The site id.
+	 * @return true if the site is allowed to addRoleSwap(id), false if not.
+	 */
+	boolean allowRoleSwap(String id);
 }
