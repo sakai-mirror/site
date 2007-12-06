@@ -443,6 +443,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 			functionManager().registerFunction(SECURE_ADD_SITE);
 			functionManager().registerFunction(SECURE_ADD_USER_SITE);
 			functionManager().registerFunction(SECURE_REMOVE_SITE);
+			functionManager().registerFunction(SITE_ROLE_SWAP);
 			functionManager().registerFunction(SECURE_UPDATE_SITE);
 			functionManager().registerFunction(SECURE_VIEW_ROSTER);
 			functionManager().registerFunction(SECURE_UPDATE_SITE_MEMBERSHIP);
@@ -732,6 +733,14 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	public boolean allowUpdateGroupMembership(String id)
 	{
 		return unlockCheck2(SECURE_UPDATE_SITE, SECURE_UPDATE_GROUP_MEMBERSHIP, siteReference(id));
+	}
+	
+	/**
+	 * @inheritDoc
+	 */
+	public boolean allowRoleSwap(String id)
+	{
+		return unlockCheck(SITE_ROLE_SWAP, siteReference(id));
 	}
 
 	/**
