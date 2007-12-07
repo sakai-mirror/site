@@ -382,6 +382,19 @@ public class SiteService
 
 		return service.getSites(param0, param1, param2, param3, param4, param5);
 	}
+	
+	// IU Oncourse CL - additional parameter for Dept Admin Tools - see DbSiteService.java
+	public static java.util.List getSites(org.sakaiproject.site.api.SiteService.SelectionType param0, java.lang.Object param1,
+			java.lang.String param2, java.util.Map param3, org.sakaiproject.site.api.SiteService.SortType param4,
+			org.sakaiproject.javax.PagingPosition param5, String param6)
+	{
+		org.sakaiproject.site.api.SiteService service = getInstance();
+		if (service == null) return null;
+
+		return service.getSites(param0, param1, param2, param3, param4, param5, param6);
+	}
+	// END IU
+	
 
 	public static int countSites(org.sakaiproject.site.api.SiteService.SelectionType param0, java.lang.Object param1,
 			java.lang.String param2, java.util.Map param3)
@@ -448,4 +461,5 @@ public class SiteService
 
 		return service.allowRoleSwap(param0);
 	}
+
 }

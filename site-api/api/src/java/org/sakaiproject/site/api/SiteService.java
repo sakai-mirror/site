@@ -641,7 +641,10 @@ public interface SiteService extends EntityProducer
 	 * @return The List (Site) of Site objets that meet specified criteria.
 	 */
 	List getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort, PagingPosition page);
-
+	// IU Oncourse CL - additional parameter for Dept Admin Tools - see DbSiteService.java
+	List getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort, PagingPosition page, String propertyBooleanType);
+	// END IU
+	
 	/**
 	 * Count the Site objets that meet specified criteria.
 	 * 

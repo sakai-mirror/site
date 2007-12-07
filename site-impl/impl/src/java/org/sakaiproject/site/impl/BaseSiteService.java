@@ -1488,6 +1488,14 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		return m_storage.getSites(type, ofType, criteria, propertyCriteria, sort, page);
 	}
 
+	// IU Oncourse CL - see DbSiteService.java
+	public List getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort,
+			PagingPosition page, String propertyBooleanType)
+	{
+		return m_storage.getSites(type, ofType, criteria, propertyCriteria, sort, page, propertyBooleanType);
+	}
+	// END IU
+
 	/**
 	 * @inheritDoc
 	 */
@@ -2165,6 +2173,11 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		 */
 		public List getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort,
 				PagingPosition page);
+		
+		// Oncourse CL - additional parameter for AdminTools
+		public List getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort,
+				PagingPosition page, String propertyBooleanType);
+		// END IU
 
 		/**
 		 * Count the Site objets that meet specified criteria.
@@ -2321,6 +2334,8 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		/**
 		 * Write an updated tool configuration to the database.
 		 * 
+		 * @param conn
+		 *        Optional connection to use.
 		 * @param tool
 		 *        TooConfiguration to commit.
 		 */

@@ -67,6 +67,9 @@ public class BaseSitePage implements SitePage, Identifiable
 	/** The popup setting. */
 	protected boolean m_popup = false;
 
+	/** Browser toolbar visibility when page is a popup **/
+	protected boolean m_popupwithbrowsertoolbar = false;
+	
 	/** The site id. */
 	protected String m_id = null;
 
@@ -118,8 +121,10 @@ public class BaseSitePage implements SitePage, Identifiable
 	 *        The layout as a string ("0" or not currently supported).
 	 * @param popup
 	 *        The page popup setting.
+	 * @param popupwithbrowsertoolbar
+	 *        Display browser toolbar if this is a popup page
 	 */
-	protected BaseSitePage(Site site, String id, String title, String layout, boolean popup)
+	protected BaseSitePage(Site site, String id, String title, String layout, boolean popup, boolean popupwithbrowsertoolbar)
 	{
 		m_site = site;
 		m_id = id;
@@ -142,7 +147,9 @@ public class BaseSitePage implements SitePage, Identifiable
 		}
 
 		m_popup = popup;
+		m_popupwithbrowsertoolbar = popupwithbrowsertoolbar;
 	}
+	
 
 	/**
 	 * ReConstruct - if we don't have a site to follow up to get to certain site info.
@@ -160,7 +167,7 @@ public class BaseSitePage implements SitePage, Identifiable
 	 * @param skin
 	 *        The page's site's skin.
 	 */
-	protected BaseSitePage(String pageId, String title, String layout, boolean popup, String siteId, String skin)
+	protected BaseSitePage(String pageId, String title, String layout, boolean popup, boolean popupwithbrowsertoolbar, String siteId, String skin)
 	{
 		m_site = null;
 		m_id = pageId;
@@ -184,6 +191,7 @@ public class BaseSitePage implements SitePage, Identifiable
 		}
 
 		m_popup = popup;
+		m_popupwithbrowsertoolbar = popupwithbrowsertoolbar;
 
 		m_siteId = siteId;
 		m_skin = skin;
@@ -216,6 +224,7 @@ public class BaseSitePage implements SitePage, Identifiable
 		m_title = bOther.m_title;
 		m_layout = bOther.m_layout;
 		m_popup = bOther.m_popup;
+		m_popupwithbrowsertoolbar = bOther.m_popupwithbrowsertoolbar;
 
 		m_properties = new BaseResourcePropertiesEdit();
 		ResourceProperties pOther = other.getProperties();
@@ -280,6 +289,14 @@ public class BaseSitePage implements SitePage, Identifiable
 		try
 		{
 			m_popup = Boolean.valueOf(el.getAttribute("popup")).booleanValue();
+		}
+		catch (Exception e)
+		{
+		}
+		
+		try
+		{
+			m_popupwithbrowsertoolbar = Boolean.valueOf(el.getAttribute("popupwithbrowsertoolbar")).booleanValue();
 		}
 		catch (Exception e)
 		{
@@ -367,6 +384,11 @@ public class BaseSitePage implements SitePage, Identifiable
 	public boolean isPopUp()
 	{
 		return m_popup;
+	}
+	
+	public boolean isPopUpWithBrowserToolbar()
+	{
+		return m_popupwithbrowsertoolbar;
 	}
 
 	/**
@@ -482,6 +504,11 @@ public class BaseSitePage implements SitePage, Identifiable
 	public void setPopup(boolean popup)
 	{
 		m_popup = popup;
+	}
+	
+	public void setPopupWithBrowserToolbar(boolean popupwithbrowsertoolbar)
+	{
+		m_popupwithbrowsertoolbar = popupwithbrowsertoolbar;
 	}
 
 	/**
@@ -688,6 +715,7 @@ public class BaseSitePage implements SitePage, Identifiable
 		if (m_title != null) page.setAttribute("title", m_title);
 		page.setAttribute("layout", Integer.toString(m_layout));
 		page.setAttribute("popup", Boolean.valueOf(m_popup).toString());
+		page.setAttribute("popupwithbrowsertoolbar", Boolean.valueOf(m_popupwithbrowsertoolbar).toString());
 
 		// properties
 		stack.push(page);

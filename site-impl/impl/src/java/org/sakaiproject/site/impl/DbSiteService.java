@@ -281,15 +281,16 @@ public abstract class DbSiteService extends BaseSiteService
 				SitePage page = (SitePage) iPages.next();
 
 				// write the page
-				statement = "insert into SAKAI_SITE_PAGE (PAGE_ID, SITE_ID, TITLE, LAYOUT, POPUP, SITE_ORDER)" + " values (?,?,?,?,?,?)";
+				statement = "insert into SAKAI_SITE_PAGE (PAGE_ID, SITE_ID, TITLE, LAYOUT, POPUP, POPUP_BROWSER_TOOLBAR, SITE_ORDER)" + " values (?,?,?,?,?,?,?)";
 
-				fields = new Object[6];
+				fields = new Object[7];
 				fields[0] = page.getId();
 				fields[1] = caseId(edit.getId());
 				fields[2] = page.getTitle();
 				fields[3] = Integer.toString(page.getLayout());
 				fields[4] = ((((BaseSitePage) page).m_popup) ? "1" : "0");
-				fields[5] = new Integer(pageOrder++);
+				fields[5] = ((((BaseSitePage) page).m_popupwithbrowsertoolbar) ? "1" : "0");
+				fields[6] = new Integer(pageOrder++);
 				m_sql.dbWrite(statement, fields);
 
 				// write the page's properties
@@ -468,11 +469,22 @@ public abstract class DbSiteService extends BaseSiteService
 			return super.countAllResources();
 		}
 
+		// IU Oncourse CL - modification to allow OR criteria
+		public List getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort,
+				PagingPosition page)
+		{
+			
+			
+			return getSites(type, ofType, criteria, propertyCriteria, sort,
+					 page, "AND");
+			
+		} // End IU
+		
 		/**
 		 * {@inheritDoc}
 		 */
 		public List getSites(SelectionType type, Object ofType, String criteria, Map propertyCriteria, SortType sort,
-				PagingPosition page)
+				PagingPosition page, String propertyBooleanType)
 		{
 			// Note: super users are not treated any differently - they get only those sites they have permission for,
 			// not based on super user status
@@ -549,6 +561,7 @@ public abstract class DbSiteService extends BaseSiteService
 				// join with the SITE_USER table
 				join = "SAKAI_SITE_USER";
 			}
+			
 			if (sort==SortType.CREATED_BY_ASC || sort==SortType.CREATED_BY_DESC || sort==SortType.MODIFIED_BY_ASC || sort==SortType.MODIFIED_BY_DESC)
 			{
 				// join with SITE_USER_ID_MAP table
@@ -561,19 +574,42 @@ public abstract class DbSiteService extends BaseSiteService
 					join = "SAKAI_USER_ID_MAP";
 				}
 			}
-				
 
-			// add propertyCriteria if specified
+		
+//			 add propertyCriteria if specified
+			// IU Oncourse CL - allow for "AND" or "OR"
 			if ((propertyCriteria != null) && (propertyCriteria.size() > 0))
 			{
+				
+				if("OR".equals(propertyBooleanType)) {
+					
+					where.append("(");
+					
+				}
+				
 				for (int i = 0; i < propertyCriteria.size(); i++)
 				{
-					where
-							.append("SAKAI_SITE.SITE_ID in (select SITE_ID from SAKAI_SITE_PROPERTY where NAME = ? and UPPER(VALUE) like UPPER(?)) and ");
+					where.append("SAKAI_SITE.SITE_ID in (select SITE_ID from SAKAI_SITE_PROPERTY where NAME = ? and UPPER(VALUE) like UPPER(?))");
+					if("OR".equals(propertyBooleanType)) {
+						
+						where.append(" or ");
+						
+					} else {
+						
+						where.append(" and ");
+						
+					}
+				}
+				
+				if("OR".equals(propertyBooleanType)) {
+					
+					where.append(")");
+					
 				}
 			}
+// END IU
 			
-			// where sorted by createdby, need to join with SAKAI_USER_ID_MAP in order to find out the user eid
+//			 where sorted by createdby, need to join with SAKAI_USER_ID_MAP in order to find out the user eid
 			if (sort==SortType.CREATED_BY_ASC || sort==SortType.CREATED_BY_DESC )
 			{
 				// add more to where clause
@@ -730,6 +766,20 @@ public abstract class DbSiteService extends BaseSiteService
 						Map.Entry entry = (Map.Entry) i.next();
 						String name = (String) entry.getKey();
 						String value = (String) entry.getValue();
+						
+						// IU OncourseCL -- trim these special properties
+						if (name.length() >= 23 && name.substring(0,23).equals("site-oncourse-course-id")) {
+							
+							name = "site-oncourse-course-id";
+							
+						}
+						if (name.length() >= 28 && name.substring(0,28).equals("oncourse-admin-authorization")) {
+							
+							name = "oncourse-admin-authorization";
+							
+						}
+						// END IU
+						
 						fields[pos++] = name;
 						fields[pos++] = "%" + value + "%";
 					}
@@ -746,6 +796,14 @@ public abstract class DbSiteService extends BaseSiteService
 			if ((where.length() > 5) && (where.substring(where.length() - 5).equals(" and ")))
 			{
 				where.setLength(where.length() - 5);
+			}
+			
+			
+//			 where has a trailing 'or ' to remove
+			if ((where.length() > 5) && (where.substring(where.length()-5).equals(" or )")))
+			{
+				where.setLength(where.length()-5);
+				where.append(")");
 			}
 
 			// paging
@@ -1072,7 +1130,7 @@ public abstract class DbSiteService extends BaseSiteService
 		 */
 		public SitePage findPage(final String id)
 		{
-			String sql = "select PAGE_ID, SAKAI_SITE_PAGE.TITLE, LAYOUT, SAKAI_SITE_PAGE.SITE_ID, SKIN, PUBLISHED, POPUP "
+			String sql = "select PAGE_ID, SAKAI_SITE_PAGE.TITLE, LAYOUT, SAKAI_SITE_PAGE.SITE_ID, SKIN, PUBLISHED, POPUP, POPUP_BROWSER_TOOLBAR "
 					+ "from SAKAI_SITE_PAGE, SAKAI_SITE where SAKAI_SITE_PAGE.SITE_ID = SAKAI_SITE.SITE_ID " + "and PAGE_ID = ?";
 
 			Object fields[] = new Object[1];
@@ -1092,12 +1150,13 @@ public abstract class DbSiteService extends BaseSiteService
 						String skin = result.getString(5);
 						int published = result.getInt(6);
 						boolean popup = "1".equals(result.getString(7)) ? true : false;
+						boolean popupwithbrowsertoolbar = "1".equals(result.getString(8)) ? true : false;
 
 						// adjust the skin value
 						skin = m_service.adjustSkin(skin, (published == 1));
 
 						// make the page
-						BaseSitePage page = new BaseSitePage(pageId, title, layout, popup, siteId, skin);
+						BaseSitePage page = new BaseSitePage(pageId, title, layout, popup, popupwithbrowsertoolbar, siteId, skin);
 
 						return page;
 					}
@@ -1794,7 +1853,7 @@ public abstract class DbSiteService extends BaseSiteService
 		public void readSitePages(final Site site, final ResourceVector pages)
 		{
 			// read all resources from the db with a where
-			String sql = "select PAGE_ID, TITLE, LAYOUT, POPUP from SAKAI_SITE_PAGE" + " where SITE_ID = ?"
+			String sql = "select PAGE_ID, TITLE, LAYOUT, POPUP, POPUP_BROWSER_TOOLBAR from SAKAI_SITE_PAGE" + " where SITE_ID = ?"
 					+ " order by SITE_ORDER ASC";
 
 			Object fields[] = new Object[1];
@@ -1811,9 +1870,10 @@ public abstract class DbSiteService extends BaseSiteService
 						String title = result.getString(2);
 						String layout = result.getString(3);
 						boolean popup = "1".equals(result.getString(4)) ? true : false;
+						boolean popupwithbrowsertoolbar = "1".equals(result.getString(5)) ? true : false;
 
 						// make the page
-						BaseSitePage page = new BaseSitePage(site, id, title, layout, popup);
+						BaseSitePage page = new BaseSitePage(site, id, title, layout, popup, popupwithbrowsertoolbar);
 
 						// add it to the pages
 						pages.add(page);

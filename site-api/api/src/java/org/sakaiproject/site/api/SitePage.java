@@ -74,6 +74,9 @@ public interface SitePage extends Edit, Serializable
 	/** @return true if page should open in new window. */
 	public boolean isPopUp();
 
+	/** @return true if browser toolbar should be visible when page is opened in new window. */
+	public boolean isPopUpWithBrowserToolbar();
+	
 	/**
 	 * Access a tool on this page by id.
 	 * 
@@ -113,6 +116,14 @@ public interface SitePage extends Edit, Serializable
 	 *        The new popup status.
 	 */
 	public void setPopup(boolean popup);
+	
+	/**
+	 * Set the browser toolbar status for this page if it is a popup.
+	 * 
+	 * @param popupwithbrowsertoolbar
+	 *        The new popup status.
+	 */
+	public void setPopupWithBrowserToolbar(boolean popupwithbrowsertoolbar);
 
 	/**
 	 * Add a new tool to the page.
