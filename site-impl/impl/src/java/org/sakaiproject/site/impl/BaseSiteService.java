@@ -942,12 +942,29 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		{
 			return unlockCheck(SECURE_ADD_USER_SITE, siteReference(id));
 		}
+		else if (id != null && isCourseSite(id)) {
+			return unlockCheck(SECURE_ADD_COURSE_SITE, siteReference(id));
+		}
 		else
 		{
 			return unlockCheck(SECURE_ADD_SITE, siteReference(id));
 		}
 	}
 
+	private boolean isCourseSite(String siteId) {
+		boolean rv = false;
+		try {
+			Site s = getSite(siteId);
+			if (serverConfigurationService().getString("courseSiteType", "course").equals(s.getType())) 
+				return true;
+				
+		} catch (IdUnusedException e) {
+			M_log.warn("isCourseSite(): no site with id: " + siteId);
+		}
+		
+		return rv;
+	}
+	
 	public boolean allowAddCourseSite() {
 		return unlockCheck(SECURE_ADD_COURSE_SITE, siteReference(null));
 	}
