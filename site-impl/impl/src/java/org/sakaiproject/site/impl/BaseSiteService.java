@@ -447,6 +447,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 			functionManager().registerFunction(SECURE_VIEW_ROSTER);
 			functionManager().registerFunction(SECURE_UPDATE_SITE_MEMBERSHIP);
 			functionManager().registerFunction(SECURE_UPDATE_GROUP_MEMBERSHIP);
+			functionManager().registerFunction(SECURE_ADD_COURSE_SITE);
 		}
 		catch (Throwable t)
 		{
@@ -947,6 +948,10 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		}
 	}
 
+	public boolean allowAddCourseSite() {
+		return unlockCheck(SECURE_ADD_COURSE_SITE, siteReference(null));
+	}
+	
 	/**
 	 * @inheritDoc
 	 */
