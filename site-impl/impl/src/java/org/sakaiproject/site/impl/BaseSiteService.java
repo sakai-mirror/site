@@ -443,11 +443,11 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 			functionManager().registerFunction(SECURE_ADD_SITE);
 			functionManager().registerFunction(SECURE_ADD_USER_SITE);
 			functionManager().registerFunction(SECURE_REMOVE_SITE);
-			functionManager().registerFunction(SITE_ROLE_SWAP);
 			functionManager().registerFunction(SECURE_UPDATE_SITE);
 			functionManager().registerFunction(SECURE_VIEW_ROSTER);
 			functionManager().registerFunction(SECURE_UPDATE_SITE_MEMBERSHIP);
 			functionManager().registerFunction(SECURE_UPDATE_GROUP_MEMBERSHIP);
+			functionManager().registerFunction(SECURE_ADD_COURSE_SITE);
 		}
 		catch (Throwable t)
 		{
@@ -732,14 +732,6 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	{
 		return unlockCheck(SECURE_UPDATE_GROUP_MEMBERSHIP, siteReference(id));
 	}
-	
-	/**
-	 * @inheritDoc
-	 */
-	public boolean allowRoleSwap(String id)
-	{
-		return unlockCheck(SITE_ROLE_SWAP, siteReference(id));
-	}
 
 	/**
 	 * @inheritDoc
@@ -950,12 +942,33 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		{
 			return unlockCheck(SECURE_ADD_USER_SITE, siteReference(id));
 		}
+		else if (id != null && isCourseSite(id)) {
+			return unlockCheck(SECURE_ADD_COURSE_SITE, siteReference(id));
+		}
 		else
 		{
 			return unlockCheck(SECURE_ADD_SITE, siteReference(id));
 		}
 	}
 
+	private boolean isCourseSite(String siteId) {
+		boolean rv = false;
+		try {
+			Site s = getSite(siteId);
+			if (serverConfigurationService().getString("courseSiteType", "course").equals(s.getType())) 
+				return true;
+				
+		} catch (IdUnusedException e) {
+			M_log.warn("isCourseSite(): no site with id: " + siteId);
+		}
+		
+		return rv;
+	}
+	
+	public boolean allowAddCourseSite() {
+		return unlockCheck(SECURE_ADD_COURSE_SITE, siteReference(null));
+	}
+	
 	/**
 	 * @inheritDoc
 	 */
@@ -1572,9 +1585,8 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 					out.println("<title>");
 					out.println(site.getTitle());
 					out.println("</title>");
-					out.println("</head><body><div class=\"portletBody\">");
-					out.println("<br />");
-					
+					out.println("</head><body><div class=\"portletBody\">");					
+
 					// get the description - if missing, use the site title
 					String description = site.getDescription();
 

@@ -66,8 +66,6 @@ public class SiteService
 
 	public static java.lang.String SECURE_REMOVE_SITE = org.sakaiproject.site.api.SiteService.SECURE_REMOVE_SITE;
 
-	public static java.lang.String SITE_ROLE_SWAP = org.sakaiproject.site.api.SiteService.SITE_ROLE_SWAP;
-	
 	public static java.lang.String SECURE_UPDATE_SITE = org.sakaiproject.site.api.SiteService.SECURE_UPDATE_SITE;
 	
 	public static java.lang.String SECURE_UPDATE_SITE_MEMBERSHIP = org.sakaiproject.site.api.SiteService.SECURE_UPDATE_SITE_MEMBERSHIP;
@@ -200,6 +198,13 @@ public class SiteService
 		return service.allowAddSite(param0);
 	}
 
+	public static boolean allowAddCourseSite() {
+		org.sakaiproject.site.api.SiteService service = getInstance();
+		if (service == null) return false;
+
+		return service.allowAddCourseSite();		
+	}
+	
 	public static org.sakaiproject.site.api.Site addSite(java.lang.String param0, java.lang.String param1)
 			throws org.sakaiproject.exception.IdInvalidException, org.sakaiproject.exception.IdUsedException,
 			org.sakaiproject.exception.PermissionException
@@ -449,11 +454,4 @@ public class SiteService
 		return service.getLayoutNames();
 	}
 
-	public static boolean allowRoleSwap(java.lang.String param0)
-	{
-		org.sakaiproject.site.api.SiteService service = getInstance();
-		if (service == null) return false;
-
-		return service.allowRoleSwap(param0);
-	}
 }

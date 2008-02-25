@@ -71,15 +71,15 @@ public interface SiteService extends EntityProducer
 	/** Name for the event of adding a site. */
 	static final String SECURE_ADD_SITE = "site.add";
 
+	/** Name for the event of adding a course site */ 
+	static final String SECURE_ADD_COURSE_SITE = "site.add.course";
+	
 	/** Name for the event of adding a user's My Workspace site. */
 	static final String SECURE_ADD_USER_SITE = "site.add.usersite";
 
 	/** Name for the event of removing a site. */
 	static final String SECURE_REMOVE_SITE = "site.del";
 
-	/** Name for the event of accessing role swap functionality. */
-	static final String SITE_ROLE_SWAP = "site.roleswap";
-	
 	/** Name for the event of updating a site. */
 	static final String SECURE_UPDATE_SITE = "site.upd";
 
@@ -390,6 +390,12 @@ public interface SiteService extends EntityProducer
 	 * @return true if the site is allowed to addSite(id), false if not.
 	 */
 	boolean allowAddSite(String id);
+	
+	/**
+	 *  Can the user add sites of type Course as defined by courseSiteType in sakai.properties
+	 * @return
+	 */
+	boolean allowAddCourseSite();
 
 	/**
 	 * Add a new site. The site will exist with just an id once done, so remove() it if you don't want to keep it.
@@ -737,13 +743,4 @@ public interface SiteService extends EntityProducer
 	 * @return An unmodifiable List containing the currently registered SiteAdvisors
 	 */
 	public List<SiteAdvisor> getSiteAdvisors();
-	
-	/**
-	 * check permissions for role swapping capabilites
-	 * 
-	 * @param id
-	 *        The site id.
-	 * @return true if the site is allowed to addRoleSwap(id), false if not.
-	 */
-	boolean allowRoleSwap(String id);
 }
