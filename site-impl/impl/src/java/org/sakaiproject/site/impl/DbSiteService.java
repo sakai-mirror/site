@@ -23,6 +23,8 @@ package org.sakaiproject.site.impl;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+//ONC-341
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.HashSet;
@@ -2111,6 +2113,27 @@ public abstract class DbSiteService extends BaseSiteService
 		 */
 		public Object readSqlResultRecord(ResultSet result)
 		{
+			//ONC-341
+			if(result != null)
+			{
+				try
+				{
+					ResultSetMetaData meta = result.getMetaData();
+					if(meta != null)
+					{
+						int colCount = meta.getColumnCount();
+						if(colCount < 19)
+						{
+							M_log.error("Error in DbSiteService.readSqlResultRecord: total column less than 19!");
+							return null;
+						}
+					}
+				}
+				catch(SQLException e)
+				{
+					M_log.error("Error in DbSiteService.readSqlResultRecord:" + e.getMessage(), e);
+				}
+			}
 			try
 			{
 				String id = result.getString(1);
@@ -2149,7 +2172,8 @@ public abstract class DbSiteService extends BaseSiteService
 			}
 			catch (SQLException e)
 			{
-				M_log.warn("readSqlResultRecord: " + e);
+				//ONC-341
+				M_log.warn("readSqlResultRecord: " + e, e);
 				return null;
 			}
 		}
