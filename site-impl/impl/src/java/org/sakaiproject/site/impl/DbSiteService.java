@@ -2124,7 +2124,8 @@ public abstract class DbSiteService extends BaseSiteService
 						int colCount = meta.getColumnCount();
 						if(colCount < 19)
 						{
-							M_log.error("Error in DbSiteService.readSqlResultRecord: total column less than 19!");
+							IllegalStateException ise = new IllegalStateException("Error in DbSiteService.readSqlResultRecord: total column less than 19!");
+							M_log.error(ise.getMessage(), ise);
 							return null;
 						}
 					}
