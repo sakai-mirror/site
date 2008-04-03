@@ -831,16 +831,17 @@ public class BaseSite implements Site
 	 */
 	public Collection getGroupsWithMember(String userId)
 	{
-		Collection groups = getGroups();
+		List groups = AuthzGroupService.getAuthzUserGroupIds(getReference(), userId);
 		Collection rv = new Vector();
 		for (Iterator i = groups.iterator(); i.hasNext();)
 		{
-			Group g = (Group) i.next();
-			Member m = g.getMember(userId);
+			Member m = null;
+			Group g = getGroup( (String)i.next() );
+			
+			if ( g != null )
+				m = g.getMember(userId);
 			if ((m != null) && (m.isActive()))
-			{
 				rv.add(g);
-			}
 		}
 
 		return rv;
@@ -851,16 +852,16 @@ public class BaseSite implements Site
 	 */
 	public Collection getGroupsWithMemberHasRole(String userId, String role)
 	{
-		Collection groups = getGroups();
+		List groups = AuthzGroupService.getAuthzUserGroupIds(getReference(), userId);
 		Collection rv = new Vector();
 		for (Iterator i = groups.iterator(); i.hasNext();)
 		{
-			Group g = (Group) i.next();
-			Member m = g.getMember(userId);
+			Member m = null;
+			Group g = getGroup( (String)i.next() );
+			if ( g != null )
+				m = g.getMember(userId);
 			if ((m != null) && (m.isActive()) && (m.getRole().getId().equals(role)))
-			{
 				rv.add(g);
-			}
 		}
 
 		return rv;
