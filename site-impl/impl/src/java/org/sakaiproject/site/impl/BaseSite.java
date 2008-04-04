@@ -831,7 +831,7 @@ public class BaseSite implements Site
 	 */
 	public Collection getGroupsWithMember(String userId)
 	{
-		List groups = AuthzGroupService.getAuthzUserGroupIds(getReference(), userId);
+		List groups = AuthzGroupService.getAuthzUserGroupIds(getId(), userId);
 		Collection rv = new Vector();
 		for (Iterator i = groups.iterator(); i.hasNext();)
 		{
@@ -852,7 +852,7 @@ public class BaseSite implements Site
 	 */
 	public Collection getGroupsWithMemberHasRole(String userId, String role)
 	{
-		List groups = AuthzGroupService.getAuthzUserGroupIds(getReference(), userId);
+		List groups = AuthzGroupService.getAuthzUserGroupIds(getId(), userId);
 		Collection rv = new Vector();
 		for (Iterator i = groups.iterator(); i.hasNext();)
 		{
