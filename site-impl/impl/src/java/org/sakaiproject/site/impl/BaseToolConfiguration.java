@@ -78,8 +78,6 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	/** The order within the page. */
 	protected int m_pageOrder = -1;
 
-	private BaseSiteService siteService;
-
 	/**
 	 * ReConstruct
 	 * 
@@ -96,11 +94,10 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param pageOrder
 	 *        The order within the page.
 	 */
-	protected BaseToolConfiguration(BaseSiteService siteService, SitePage page, String id, String toolId,
+	protected BaseToolConfiguration(SitePage page, String id, String toolId,
 			String title, String layoutHints, int pageOrder)
 	{
-		super( id, toolId, ToolManager.getTool(toolId), null, null, title);
-		this.siteService = siteService;
+		super(id, toolId, ToolManager.getTool(toolId), null, null, title);
 
 		m_page = page;
 		m_layoutHints = layoutHints;
@@ -131,12 +128,11 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param pageOrder
 	 *        The order within the page.
 	 */
-	protected BaseToolConfiguration(BaseSiteService siteService, String id, String toolId, String title,
+	protected BaseToolConfiguration(String id, String toolId, String title,
 			String layoutHints, String pageId, String siteId, String skin, int pageOrder)
 	{
 		super(id, toolId, ToolManager.getTool(toolId), null, null, title);
-		this.siteService = siteService;
-		
+
 		m_page = null;
 
 		m_layoutHints = layoutHints;
@@ -159,9 +155,8 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param exact
 	 *        If true, we copy ids - else we generate a new one.
 	 */
-	protected BaseToolConfiguration(BaseSiteService siteService, ToolConfiguration other, SitePage page, boolean exact)
+	protected BaseToolConfiguration(ToolConfiguration other, SitePage page, boolean exact)
 	{
-		this.siteService = siteService;
 		m_page = page;
 		BaseToolConfiguration bOther = (BaseToolConfiguration) other;
 
@@ -213,10 +208,9 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param page
 	 *        The page in which this tool lives.
 	 */
-	protected BaseToolConfiguration(BaseSiteService siteService, SitePage page)
+	protected BaseToolConfiguration(SitePage page)
 	{
 		super(IdManager.createUuid(), null, null, null, null, null);
-		this.siteService = siteService;
 
 		m_page = page;
 	}
@@ -229,11 +223,10 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param page
 	 *        The page in which this tool lives.
 	 */
-	protected BaseToolConfiguration(BaseSiteService siteService, Tool reg, SitePage page)
+	protected BaseToolConfiguration(Tool reg, SitePage page)
 	{
 		super(IdManager.createUuid(), reg.getId(), reg, null, null, null);
-		this.siteService = siteService;
-		
+
 		m_page = page;
 		setPageCategory();
 	}
@@ -246,10 +239,9 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param page
 	 *        The page in which this tool lives.
 	 */
-	protected BaseToolConfiguration(BaseSiteService siteService, String toolId, SitePage page)
+	protected BaseToolConfiguration(String toolId, SitePage page)
 	{
 		super(IdManager.createUuid(), toolId, null, null, null, null);
-		this.siteService = siteService;
 
 		m_page = page;
 		setPageCategory();
@@ -263,10 +255,9 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 * @param page
 	 *        The page in which this tool lives.
 	 */
-	protected BaseToolConfiguration(BaseSiteService siteService, Element el, SitePage page)
+	protected BaseToolConfiguration(Element el, SitePage page)
 	{
 		super();
-		this.siteService = siteService;
 
 		m_page = page;
 
@@ -309,7 +300,7 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 		// if the config has not yet been read, read it
 		if (m_configLazy)
 		{
-			siteService.m_storage.readToolProperties(
+			((BaseSiteService) (SiteService.getInstance())).m_storage.readToolProperties(
 					this, m_config);
 			m_configLazy = false;
 		}

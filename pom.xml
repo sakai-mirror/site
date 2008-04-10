@@ -4,7 +4,7 @@
   <parent>
     <artifactId>base</artifactId>
     <groupId>org.sakaiproject</groupId>
-    <version>SNAPSHOT</version>
+    <version>M2</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <name>Sakai Site Project</name>
@@ -18,23 +18,6 @@
     <url>https://source.sakaiproject.org/svn/site/trunk</url>
   </scm>
 
- <profiles>
- <profile>
-        <id>framework</id>
-  <modules>
-    <module>site-api/api</module>
-    <module>site-help</module>
-    <module>site-impl/impl</module>
-    <module>site-impl/pack</module>
-    <module>site-tool/tool</module>
-  </modules>
-  </profile>
-
- <profile>
-        <id>full</id>
-        <activation>
-          <activeByDefault>true</activeByDefault>
-        </activation>
 
   <modules>
     <module>site-api/api</module>
@@ -44,6 +27,4 @@
     <module>site-tool/tool</module>
     <module>mergedlist-util/util</module>
   </modules>
-  </profile>
-  </profiles>
 </project>

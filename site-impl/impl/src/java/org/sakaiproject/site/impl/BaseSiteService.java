@@ -447,7 +447,6 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 			functionManager().registerFunction(SECURE_VIEW_ROSTER);
 			functionManager().registerFunction(SECURE_UPDATE_SITE_MEMBERSHIP);
 			functionManager().registerFunction(SECURE_UPDATE_GROUP_MEMBERSHIP);
-			functionManager().registerFunction(SECURE_ADD_COURSE_SITE);
 		}
 		catch (Throwable t)
 		{
@@ -534,7 +533,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 				rv = (Site) o;
 
 				// return a copy of the site from the cache
-				rv = new BaseSite(this,rv, true);
+				rv = new BaseSite(rv, true);
 
 				return rv;
 			}
@@ -554,7 +553,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		// cache a copy
 		if (m_siteCache != null)
 		{
-			Site copy = new BaseSite(this,rv, true);
+			Site copy = new BaseSite(rv, true);
 			m_siteCache.put(ref, copy, m_cacheSeconds);
 		}
 
@@ -942,33 +941,12 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		{
 			return unlockCheck(SECURE_ADD_USER_SITE, siteReference(id));
 		}
-		else if (id != null && isCourseSite(id)) {
-			return unlockCheck(SECURE_ADD_COURSE_SITE, siteReference(id));
-		}
 		else
 		{
 			return unlockCheck(SECURE_ADD_SITE, siteReference(id));
 		}
 	}
 
-	private boolean isCourseSite(String siteId) {
-		boolean rv = false;
-		try {
-			Site s = getSite(siteId);
-			if (serverConfigurationService().getString("courseSiteType", "course").equals(s.getType())) 
-				return true;
-				
-		} catch (IdUnusedException e) {
-			M_log.warn("isCourseSite(): no site with id: " + siteId);
-		}
-		
-		return rv;
-	}
-	
-	public boolean allowAddCourseSite() {
-		return unlockCheck(SECURE_ADD_COURSE_SITE, siteReference(null));
-	}
-	
 	/**
 	 * @inheritDoc
 	 */
@@ -1264,7 +1242,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 			if (rv != null)
 			{
 				// return a copy from the cache
-				rv = new BaseToolConfiguration(this, rv, rv.getContainingPage(), true);
+				rv = new BaseToolConfiguration(rv, rv.getContainingPage(), true);
 				return rv;
 			}
 
@@ -1308,7 +1286,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 			rv = m_siteCache.getPage(id);
 			if (rv != null)
 			{
-				rv = new BaseSitePage(this,rv, rv.getContainingSite(), true);
+				rv = new BaseSitePage(rv, rv.getContainingSite(), true);
 				return rv;
 			}
 
@@ -1585,8 +1563,9 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 					out.println("<title>");
 					out.println(site.getTitle());
 					out.println("</title>");
-					out.println("</head><body><div class=\"portletBody\">");					
-
+					out.println("</head><body><div class=\"portletBody\">");
+					out.println("<br />");
+					
 					// get the description - if missing, use the site title
 					String description = site.getDescription();
 
@@ -2407,7 +2386,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	 */
 	public Entity newResource(Entity container, String id, Object[] others)
 	{
-		return new BaseSite(this,id);
+		return new BaseSite(id);
 	}
 
 	/**
@@ -2435,7 +2414,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	 */
 	public Entity newResource(Entity container, Entity other)
 	{
-		return new BaseSite(this,(Site) other, true);
+		return new BaseSite((Site) other, true);
 	}
 
 	/**
@@ -2487,7 +2466,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	 */
 	public Edit newResourceEdit(Entity container, String id, Object[] others)
 	{
-		BaseSite e = new BaseSite(this,id);
+		BaseSite e = new BaseSite(id);
 		e.activate();
 		return e;
 	}
@@ -2517,7 +2496,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 	 */
 	public Edit newResourceEdit(Entity container, Entity other)
 	{
-		BaseSite e = new BaseSite(this,(Site) other);
+		BaseSite e = new BaseSite((Site) other);
 		e.activate();
 		return e;
 	}
@@ -2621,7 +2600,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 				}
 
 				// assign source site's attributes to the target site
-				((BaseSite) site).set(new BaseSite(this,el), false);
+				((BaseSite) site).set(new BaseSite(el), false);
 
 				try
 				{
@@ -2680,7 +2659,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 					// The group we get from the siteCache is a group from the actual cached site, so it's containing site is the actual cached site.
 
 					// get a copy of the site from the cache
-					Site site = new BaseSite(this,group.getContainingSite(), true);
+					Site site = new BaseSite(group.getContainingSite(), true);
 
 					// get the group from there
 					rv = site.getGroup(refOrId);

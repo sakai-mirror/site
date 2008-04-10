@@ -79,18 +79,14 @@ public class BaseGroup implements Group, Identifiable
 	/** Set to true if we have changed our azg, so it need to be written back on save. */
 	protected boolean m_azgChanged = false;
 
-	private BaseSiteService siteService;
-
 	/**
 	 * Construct. Auto-generate the id.
 	 * 
 	 * @param site
 	 *        The site in which this page lives.
 	 */
-	protected BaseGroup(BaseSiteService siteService, Site site)
+	protected BaseGroup(Site site)
 	{
-		this.siteService = siteService;
-
 		if (site == null) M_log.warn("BaseGroup(site) created with null site");
 
 		m_site = site;
@@ -98,9 +94,8 @@ public class BaseGroup implements Group, Identifiable
 		m_properties = new BaseResourcePropertiesEdit();
 	}
 
-	protected BaseGroup(BaseSiteService siteService, String id, String title, String description, Site site)
+	protected BaseGroup(String id, String title, String description, Site site)
 	{
-		this.siteService = siteService;
 		if (site == null) M_log.warn("BaseGroup(..., site) created with null site");
 
 		m_id = id;
@@ -120,9 +115,8 @@ public class BaseGroup implements Group, Identifiable
 	 * @param exact
 	 *        If true, we copy id - else we generate a new one.
 	 */
-	protected BaseGroup(BaseSiteService siteService, Group other, Site site, boolean exact)
+	protected BaseGroup(Group other, Site site, boolean exact)
 	{
-		this.siteService = siteService;
 		if (site == null) M_log.warn("BaseGroup(other, site...) created with null site");
 
 		BaseGroup bOther = (BaseGroup) other;
@@ -199,7 +193,7 @@ public class BaseGroup implements Group, Identifiable
 	 */
 	public String getReference()
 	{
-		return siteService.siteGroupReference(m_site.getId(), getId());
+		return ((BaseSiteService) (SiteService.getInstance())).siteGroupReference(m_site.getId(), getId());
 	}
 
 	/**
@@ -337,7 +331,7 @@ public class BaseGroup implements Group, Identifiable
 					// use a template, but assign no user any maintain role
 
 					// find the template for the new azg
-					String groupAzgTemplate = siteService.groupAzgTemplate(m_site);
+					String groupAzgTemplate = ((BaseSiteService) (SiteService.getInstance())).groupAzgTemplate(m_site);
 					AuthzGroup template = null;
 					try
 					{
