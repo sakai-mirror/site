@@ -22,6 +22,7 @@
 package org.sakaiproject.site.impl;
 
 import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -831,7 +832,12 @@ public class BaseSite implements Site
 	 */
 	public Collection getGroupsWithMember(String userId)
 	{
-		List groups = AuthzGroupService.getAuthzUserGroupIds(getId(), userId);
+		Collection siteGroups = getGroups();
+		ArrayList siteGroupIds = new ArrayList(siteGroups.size());
+		for ( Iterator it=siteGroups.iterator(); it.hasNext(); )
+			siteGroupIds.add( ((Group)it.next()).getId() );
+			
+		List groups = AuthzGroupService.getAuthzUserGroupIds(getId(), siteGroupIds, userId);
 		Collection rv = new Vector();
 		for (Iterator i = groups.iterator(); i.hasNext();)
 		{
@@ -852,7 +858,12 @@ public class BaseSite implements Site
 	 */
 	public Collection getGroupsWithMemberHasRole(String userId, String role)
 	{
-		List groups = AuthzGroupService.getAuthzUserGroupIds(getId(), userId);
+		Collection siteGroups = getGroups();
+		ArrayList siteGroupIds = new ArrayList(siteGroups.size());
+		for ( Iterator it=siteGroups.iterator(); it.hasNext(); )
+			siteGroupIds.add( it.next() );
+			
+		List groups = AuthzGroupService.getAuthzUserGroupIds(getId(), siteGroupIds, userId);
 		Collection rv = new Vector();
 		for (Iterator i = groups.iterator(); i.hasNext();)
 		{
