@@ -507,22 +507,20 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		return rv;
 	}
 
-	/**
-	 * Access an already defined site object.
-	 * 
-	 * @param id
-	 *        The site id string.
-	 * @return A site object containing the site information
-	 * @exception IdUnusedException
-	 *            if not found
-	 */
-	protected Site getDefinedSite(String id) throws IdUnusedException
-	{
-		if (id == null) throw new IdUnusedException("<null>");
+        /**
+         * Access site object from Cache (if available)
+         * 
+         * @param id
+         *        The site id string.
+         * @return A site object containing the site information or null
+         *            if not found
+         */
+        protected Site getCachedSite(String id)
+        {
+                if (id == null) return null;
 
-		Site rv = null;
+                Site rv = null;
 
-		// check the cache
 		String ref = siteReference(id);
 		if ((m_siteCache != null) && (m_siteCache.containsKey(ref)))
 		{
@@ -538,6 +536,25 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 				return rv;
 			}
 		}
+                return null;
+        }
+
+	/**
+	 * Access an already defined site object.
+	 * 
+	 * @param id
+	 *        The site id string.
+	 * @return A site object containing the site information
+	 * @exception IdUnusedException
+	 *            if not found
+	 */
+	protected Site getDefinedSite(String id) throws IdUnusedException
+	{
+		if (id == null) throw new IdUnusedException("<null>");
+
+		// Check the cache
+		Site rv = getCachedSite(id);
+		if ( rv != null ) return rv;
 
 		rv = m_storage.get(id);
 
@@ -553,6 +570,7 @@ public abstract class BaseSiteService implements SiteService, StorageUser
 		// cache a copy
 		if (m_siteCache != null)
 		{
+			String ref = siteReference(id);
 			Site copy = new BaseSite(rv, true);
 			m_siteCache.put(ref, copy, m_cacheSeconds);
 		}

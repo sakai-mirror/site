@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -777,7 +778,28 @@ public abstract class DbSiteService extends BaseSiteService
 				rv = getSelectedResources(where.toString(), order, fields, join);
 			}
 
-			return rv;
+			if ( m_siteCache == null ) return rv;
+
+                        // Loop through the sites to see if we have cached copies 
+                        // of the sites
+                        List newrv = new ArrayList();
+
+                        int count = 0;
+                        for ( Site s : (List<Site>) rv) {
+                                Site news = getCachedSite(s.getId());
+                                if ( news != null )
+                                {
+                                        newrv.add(news);
+                                        count++;
+                                }
+                                else
+                                {
+                                        newrv.add(s);
+                                }
+                        }
+			// System.out.println("Returning cache="+count);
+                        return newrv;
+
 		}
 
 		/**
