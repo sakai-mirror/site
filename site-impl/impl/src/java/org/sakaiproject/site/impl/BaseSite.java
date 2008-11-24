@@ -163,14 +163,17 @@ public class BaseSite implements Site
 	 */
 	protected boolean m_customPageOrdered = false;
 
+	private BaseSiteService siteService;
+
 	/**
 	 * Construct.
 	 * 
 	 * @param id
 	 *        The site id.
 	 */
-	public BaseSite(String id)
+	public BaseSite(BaseSiteService siteService, String id)
 	{
+		this.siteService = siteService;
 		m_id = id;
 
 		// setup for properties
@@ -185,7 +188,7 @@ public class BaseSite implements Site
 		// if the id is not null (a new site, rather than a reconstruction)
 		// add the automatic (live) properties
 		if (m_id != null)
-			((BaseSiteService) (SiteService.getInstance())).addLiveProperties(this);
+			siteService.addLiveProperties(this);
 	}
 
 	/**
@@ -197,8 +200,10 @@ public class BaseSite implements Site
 	 *        If true, we copy ids - else we generate new ones for site, page
 	 *        and tools.
 	 */
-	public BaseSite(Site other)
+	public BaseSite(BaseSiteService siteService, Site other)
 	{
+		this.siteService = siteService;
+
 		BaseSite bOther = (BaseSite) other;
 		set(bOther, true);
 	}
@@ -212,8 +217,9 @@ public class BaseSite implements Site
 	 *        If true, we copy ids - else we generate new ones for site, page
 	 *        and tools.
 	 */
-	public BaseSite(Site other, boolean exact)
+	public BaseSite(BaseSiteService siteService, Site other, boolean exact)
 	{
+		this.siteService = siteService;
 		BaseSite bOther = (BaseSite) other;
 		set(bOther, exact);
 	}
@@ -224,8 +230,9 @@ public class BaseSite implements Site
 	 * @param el
 	 *        The message in XML in a DOM element.
 	 */
-	public BaseSite(Element el)
+	public BaseSite(BaseSiteService siteService, Element el)
 	{
+		this.siteService = siteService;
 		// setup for properties
 		m_properties = new BaseResourcePropertiesEdit();
 
@@ -410,7 +417,7 @@ public class BaseSite implements Site
 					Element pageEl = (Element) pageNode;
 					if (!pageEl.getTagName().equals("page")) continue;
 
-					BaseSitePage page = new BaseSitePage(pageEl, this);
+					BaseSitePage page = new BaseSitePage(siteService,pageEl, this);
 					m_pages.add(page);
 				}
 
@@ -456,12 +463,14 @@ public class BaseSite implements Site
 	 * @param modifiedBy
 	 * @param modifiedOn
 	 */
-	public BaseSite(String id, String title, String type, String shortDesc,
+	public BaseSite(BaseSiteService siteService, String id, String title, String type, String shortDesc,
 			String description, String iconUrl, String infoUrl, String skin,
 			boolean published, boolean joinable, boolean pubView, String joinRole,
 			boolean isSpecial, boolean isUser, String createdBy, Time createdOn,
 			String modifiedBy, Time modifiedOn, boolean customPageOrdered)
 	{
+		this.siteService = siteService;
+
 		// setup for properties
 		m_properties = new BaseResourcePropertiesEdit();
 
@@ -566,7 +575,7 @@ public class BaseSite implements Site
 		for (Iterator iPages = other.getPages().iterator(); iPages.hasNext();)
 		{
 			BaseSitePage page = (BaseSitePage) iPages.next();
-			m_pages.add(new BaseSitePage(page, this, exact));
+			m_pages.add(new BaseSitePage(siteService,page, this, exact));
 		}
 		m_pagesLazy = other.m_pagesLazy;
 
@@ -575,7 +584,7 @@ public class BaseSite implements Site
 		for (Iterator iGroups = other.getGroups().iterator(); iGroups.hasNext();)
 		{
 			Group group = (Group) iGroups.next();
-			m_groups.add(new BaseGroup(group, this, exact));
+			m_groups.add(new BaseGroup(siteService, group, this, exact));
 		}
 		m_groupsLazy = other.m_groupsLazy;
 	}
@@ -601,7 +610,7 @@ public class BaseSite implements Site
 		{
 			siteString = "/" + controllingPortal + "/";
 		}
-		return ((BaseSiteService) (SiteService.getInstance()))
+		return siteService
 				.serverConfigurationService().getPortalUrl()
 				+ siteString + m_id;
 	}
@@ -611,7 +620,7 @@ public class BaseSite implements Site
 	 */
 	public String getReference()
 	{
-		return ((BaseSiteService) (SiteService.getInstance())).siteReference(m_id);
+		return siteService.siteReference(m_id);
 	}
 
 	/**
@@ -638,7 +647,7 @@ public class BaseSite implements Site
 		// if lazy, resolve
 		if (((BaseResourceProperties) m_properties).isLazy())
 		{
-			((BaseSiteService) (SiteService.getInstance())).m_storage.readSiteProperties(
+			siteService.m_storage.readSiteProperties(
 					this, m_properties);
 			((BaseResourcePropertiesEdit) m_properties).setLazy(false);
 		}
@@ -765,7 +774,7 @@ public class BaseSite implements Site
 	 */
 	public String getIconUrlFull()
 	{
-		return ((BaseSiteService) (SiteService.getInstance()))
+		return siteService
 				.convertReferenceUrl(m_icon);
 	}
 
@@ -784,7 +793,7 @@ public class BaseSite implements Site
 	{
 		if (m_info == null) return null;
 
-		return ((BaseSiteService) (SiteService.getInstance()))
+		return siteService
 				.convertReferenceUrl(m_info);
 	}
 
@@ -795,7 +804,7 @@ public class BaseSite implements Site
 	{
 		if (m_pagesLazy)
 		{
-			((BaseSiteService) (SiteService.getInstance())).m_storage.readSitePages(this,
+			siteService.m_storage.readSitePages(this,
 					m_pages);
 			m_pagesLazy = false;
 		}
@@ -810,7 +819,7 @@ public class BaseSite implements Site
 	{
 		if (m_groupsLazy)
 		{
-			((BaseSiteService) (SiteService.getInstance())).m_storage.readSiteGroups(
+			siteService.m_storage.readSiteGroups(
 					this, m_groups);
 			m_groupsLazy = false;
 		}
@@ -887,13 +896,13 @@ public class BaseSite implements Site
 		getPages();
 
 		// next, tools from all pages, all at once
-		((BaseSiteService) (SiteService.getInstance())).m_storage.readSiteTools(this);
+		siteService.m_storage.readSiteTools(this);
 
 		// get groups, all at once
 		getGroups();
 
 		// now all properties
-		((BaseSiteService) (SiteService.getInstance())).m_storage
+		siteService.m_storage
 				.readAllSiteProperties(this);
 	}
 
@@ -905,12 +914,11 @@ public class BaseSite implements Site
 		// if we are set to use our custom page order, do so
 		if (m_customPageOrdered) return getPages();
 
-		List order = ((BaseSiteService) (SiteService.getInstance()))
+		List order = siteService
 				.serverConfigurationService().getToolOrder(getType());
 		if (order.isEmpty()) return getPages();
 
-		Map<String, String> pageCategoriesByTool = ((BaseSiteService) (SiteService
-				.getInstance())).serverConfigurationService().getToolToCategoryMap(
+		Map<String, String> pageCategoriesByTool = siteService.serverConfigurationService().getToolToCategoryMap(
 				getType());
 
 		// get a copy we can modify without changing the site!
@@ -1033,7 +1041,7 @@ public class BaseSite implements Site
 		// a group, in this site, and pull the id
 		if (id.startsWith(Entity.SEPARATOR))
 		{
-			Reference ref = ((BaseSiteService) (SiteService.getInstance()))
+			Reference ref = siteService
 					.entityManager().newReference(id);
 			if ((SiteService.APPLICATION_ID.equals(ref.getType()))
 					&& (SiteService.GROUP_SUBTYPE.equals(ref.getSubType()))
@@ -1289,7 +1297,7 @@ public class BaseSite implements Site
 	 */
 	public SitePage addPage()
 	{
-		BaseSitePage page = new BaseSitePage(this);
+		BaseSitePage page = new BaseSitePage(siteService,this);
 		getPages().add(page);
 
 		return page;
@@ -1332,7 +1340,7 @@ public class BaseSite implements Site
 		// if lazy, resolve
 		if (((BaseResourceProperties) m_properties).isLazy())
 		{
-			((BaseSiteService) (SiteService.getInstance())).m_storage.readSiteProperties(
+			siteService.m_storage.readSiteProperties(
 					this, m_properties);
 			((BaseResourcePropertiesEdit) m_properties).setLazy(false);
 		}
@@ -1407,7 +1415,7 @@ public class BaseSite implements Site
 		for (Iterator iPages = getPages().iterator(); iPages.hasNext();)
 		{
 			BaseSitePage page = (BaseSitePage) iPages.next();
-			newPages.add(new BaseSitePage(page, this, false));
+			newPages.add(new BaseSitePage(siteService,page, this, false));
 		}
 
 		m_pages = newPages;
@@ -1418,7 +1426,7 @@ public class BaseSite implements Site
 	 */
 	public Group addGroup()
 	{
-		Group rv = new BaseGroup(this);
+		Group rv = new BaseGroup(siteService, this);
 		m_groups.add(rv);
 
 		return rv;
@@ -1481,8 +1489,7 @@ public class BaseSite implements Site
 					}
 
 					// find the template for the new azg
-					String groupAzgTemplate = ((BaseSiteService) (SiteService
-							.getInstance())).siteAzgTemplate(this);
+					String groupAzgTemplate = siteService.siteAzgTemplate(this);
 					AuthzGroup template = null;
 					try
 					{
