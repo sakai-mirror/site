@@ -531,7 +531,11 @@ public class BaseToolConfiguration extends org.sakaiproject.util.Placement imple
 	 */
 	protected String localizeTool()
 	{
-		String localizedTitle = ActiveToolManager.getLocalizedToolProperty(getTool().getId(), "title");
+		Tool tool = getTool();
+		if(tool == null) {
+			return ""; //we dont need a tool title as we won't even have a page
+		}
+		String localizedTitle = ActiveToolManager.getLocalizedToolProperty(tool.getId(), "title");
 			
 		// Use localized title if present
 		if(localizedTitle != null && localizedTitle.length()>0)
