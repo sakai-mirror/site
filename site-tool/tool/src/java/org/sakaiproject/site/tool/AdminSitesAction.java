@@ -1603,6 +1603,7 @@ public class AdminSitesAction extends PagedResourceActionII
 		// read the form
 		String title = StringUtil.trimToNull(data.getParameters().getString("title"));
 		page.setTitle(title);
+		page.setTitleCustom(true);
 
 		try
 		{
