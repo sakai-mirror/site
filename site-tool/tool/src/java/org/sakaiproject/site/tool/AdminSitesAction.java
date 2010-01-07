@@ -471,7 +471,7 @@ public class AdminSitesAction extends PagedResourceActionII
 		// build the menu
 		// we need the form fields for the remove...
 		Menu bar = new MenuImpl();
-		if (site!= null && SiteService.allowRemoveSite(site.getId()))
+		if (SiteService.allowRemoveSite(site.getId()))
 		{
 			bar.add(new MenuEntry(rb.getString("sitact.remsit"), null, true, MenuItem.CHECKED_NA, "doRemove", "site-form"));
 		}
