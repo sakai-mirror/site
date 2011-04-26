@@ -568,10 +568,10 @@ public class AdminSitesAction extends PagedResourceActionII
 		Menu bar = new MenuImpl();
 		if (site!= null && SiteService.allowRemoveSite(site.getId()))
 		{
-			bar.add(new MenuEntry(rb.getString("sitact.remsit"), null, true, MenuItem.CHECKED_NA, "doRemove", "site-form"));
+			bar.add(new MenuEntry(rb.getString("sitact.remsit"), null, true, MenuItem.CHECKED_NA, "doRemove", null));
 		}
 
-		bar.add(new MenuEntry(rb.getString("sitact.savas"), null, true, MenuItem.CHECKED_NA, "doSaveas_request", "site-form"));
+		bar.add(new MenuEntry(rb.getString("sitact.savas"), null, true, MenuItem.CHECKED_NA, "doSaveas_request", null));
 
 		context.put(Menu.CONTEXT_MENU, bar);
 
@@ -1034,7 +1034,7 @@ public class AdminSitesAction extends PagedResourceActionII
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
 
 		// read the form - if rejected, leave things as they are
-		if (!readSiteForm(data, state)) return;
+		//if (!readSiteForm(data, state)) return;
 
 		// go to saveas mode
 		state.setAttribute("mode", "saveas");
@@ -1152,7 +1152,7 @@ public class AdminSitesAction extends PagedResourceActionII
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
 
 		// read the form - if rejected, leave things as they are
-		if (!readSiteForm(data, state)) return;
+		//if (!readSiteForm(data, state)) return;
 
 		// go to remove confirm mode
 		state.setAttribute("mode", "confirm");
