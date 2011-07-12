@@ -951,6 +951,10 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doSave(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+		
+		if (!"POST".equals(data.getRequest().getMethod())) {
+			return;
+		}
 
 		// read the form - if rejected, leave things as they are
 		if (!readSiteForm(data, state)) return;
@@ -966,6 +970,10 @@ public class AdminSitesAction extends PagedResourceActionII
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
 		
+		if (!"POST".equals(data.getRequest().getMethod())) {
+			return;
+		}
+		
 		// read the properties form
 		readPropertiesForm(data, state);
 
@@ -978,6 +986,10 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doSave_edit(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+		
+		if (!"POST".equals(data.getRequest().getMethod())) {
+			return;
+		}
 
 		// commit the change
 		Site site = (Site) state.getAttribute("site");
@@ -1047,6 +1059,10 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doSaveas(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+		
+		if (!"POST".equals(data.getRequest().getMethod())) {
+			return;
+		}
 
 		// read the form
 		String id = data.getParameters().getString("id");
@@ -1106,6 +1122,10 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doCancel(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+		
+		if (!"POST".equals(data.getRequest().getMethod())) {
+			return;
+		}
 
 		// cancel the realm edit - it will be removed if the site is removed
 		// RealmEdit realm = (RealmEdit) state.getAttribute("realm");
@@ -1165,6 +1185,10 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doRemove_confirmed(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+		
+		if (!"POST".equals(data.getRequest().getMethod())) {
+			return;
+		}
 
 		// get the site
 		Site site = (Site) state.getAttribute("site");
@@ -1387,6 +1411,10 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doNew_property(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+		
+		if (!"POST".equals(data.getRequest().getMethod())) {
+			return;
+		}
 
 		// read the properties form
 		readPropertiesForm(data, state);
@@ -1895,6 +1923,10 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doSave_tool(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+		
+		if (!"POST".equals(data.getRequest().getMethod())) {
+			return;
+		}
 
 		// read the form - if rejected, leave things as they are
 		if (!readToolForm(data, state)) return;
@@ -1913,6 +1945,10 @@ public class AdminSitesAction extends PagedResourceActionII
 	public void doDone_tool(RunData data, Context context)
 	{
 		SessionState state = ((JetspeedRunData) data).getPortletSessionState(((JetspeedRunData) data).getJs_peid());
+		
+		if (!"POST".equals(data.getRequest().getMethod())) {
+			return;
+		}
 
 		// read the form - if rejected, leave things as they are
 		if (!readToolForm(data, state)) return;
