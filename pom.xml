@@ -42,12 +42,4 @@
         <url>https://source.sakaiproject.org/svn/site/branches/site-2.9.0-b02</url>
     </scm>
     
-    <distributionManagement>
-        <site>
-            <id>sakai-site</id>
-            <name>Sakai release Site</name>
-            <url>scp://source.sakaiproject.org/var/www/html/release/site/${project.version}</url>
-        </site>
-    </distributionManagement>
-
 </project>
